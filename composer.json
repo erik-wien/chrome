@@ -1,0 +1,19 @@
+{
+    "name": "erikr/chrome",
+    "description": "Shared UI chrome: header, footer, user dropdown, avatar, admin partials",
+    "type": "library",
+    "require": {
+        "php": ">=8.2",
+        "erikr/auth": "*"
+    },
+    "repositories": [
+        {"type": "path", "url": "../auth"}
+    ],
+    "autoload": {
+        "psr-4": {
+            "Erikr\\Chrome\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
