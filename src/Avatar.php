@@ -61,8 +61,11 @@ final class Avatar
      * Detect image MIME by leading magic bytes. Legacy blobs on shared hosts
      * pre-date migration 09 (avatar_simplify) and may still be PNG/GIF/WEBP;
      * new uploads are always JPEG. Unknown → fall back to canonical JPEG.
+     *
+     * Public so consumers (and tests) can use the same detection logic —
+     * it's a pure function over the blob.
      */
-    private static function detectMime(string $blob): string
+    public static function detectMime(string $blob): string
     {
         $head = substr($blob, 0, 12);
         if (strncmp($head, "\xFF\xD8\xFF", 3) === 0)                       return 'image/jpeg';
