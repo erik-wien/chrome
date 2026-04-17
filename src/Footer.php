@@ -8,7 +8,12 @@ namespace Erikr\Chrome;
  *
  * Three-column grid: Impressum link left, © owner center, version string right.
  * Each app must define APP_VERSION, APP_BUILD, APP_ENV constants (or pass them
- * explicitly) so the footer can render "Major.Minor.Build APP_ENV".
+ * explicitly) so the footer can render "Major.Minor.Build STAGE" per Rule §13.
+ *
+ * STAGE is derived from APP_ENV:
+ *   'local' (or anything matching dev targets) → DEV
+ *   everything else → PROD
+ * Callers can override by passing 'stage' => 'DEV' | 'PROD'.
  *
  * Usage:
  *   Footer::render(['base' => $base]);
@@ -16,9 +21,9 @@ namespace Erikr\Chrome;
  *   // or explicit:
  *   Footer::render([
  *       'base'          => $base,
- *       'impressumHref' => $base . '/impressum.html',
+ *       'impressumHref' => $base . '/impressum.php',
  *       'owner'         => 'Erik R. Huemer',
- *       'version'       => '1.2.3 prod',
+ *       'version'       => '1.2.3 PROD',
  *   ]);
  */
 final class Footer
@@ -28,14 +33,14 @@ final class Footer
         $base  = rtrim((string) ($a['base'] ?? ''), '/');
         $owner = (string) ($a['owner'] ?? 'Erik R. Huemer');
 
-        $impressumHref = $a['impressumHref'] ?? ($base . '/impressum.html');
+        $impressumHref = $a['impressumHref'] ?? ($base . '/impressum.php');
 
         $version = $a['version'] ?? null;
         if ($version === null) {
             $v = defined('APP_VERSION') ? (string) APP_VERSION : '0.0';
             $b = defined('APP_BUILD')   ? (string) APP_BUILD   : '0';
-            $e = defined('APP_ENV')     ? (string) APP_ENV     : '';
-            $version = trim($v . '.' . $b . ($e !== '' ? ' ' . $e : ''));
+            $stage = (string) ($a['stage'] ?? self::deriveStage());
+            $version = trim($v . '.' . $b . ($stage !== '' ? ' ' . $stage : ''));
         }
 
         $year = (string) ($a['year'] ?? date('Y'));
@@ -47,5 +52,19 @@ final class Footer
         echo '<span>&copy; ' . $h($year) . ' ' . $h($owner) . '</span>';
         echo '<span>' . $h((string) $version) . '</span>';
         echo '</footer>';
+    }
+
+    /**
+     * Derive STAGE from APP_ENV per Rule §13: local dev targets → DEV, everything
+     * else (production deploy targets like akadbrain, world4you) → PROD.
+     */
+    private static function deriveStage(): string
+    {
+        if (!defined('APP_ENV')) {
+            return '';
+        }
+        $env = strtolower((string) APP_ENV);
+        $devTargets = ['local', 'localhost', 'dev', 'development', 'staging'];
+        return in_array($env, $devTargets, true) ? 'DEV' : 'PROD';
     }
 }

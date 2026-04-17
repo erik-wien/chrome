@@ -136,7 +136,8 @@ final class UsersTab
                                 <td><?= $html ?></td>
                             <?php endforeach; ?>
                             <td style="white-space:nowrap">
-                                <button type="button" class="btn btn-sm btn-edit"
+                                <button type="button" class="btn btn-sm btn-icon btn-edit"
+                                        title="Bearbeiten" aria-label="Bearbeiten"
                                         data-modal-open="editModal"
                                         data-id="<?= $uid ?>"
                                         data-username="<?= $h($u['username']) ?>"
@@ -147,33 +148,38 @@ final class UsersTab
                                             $k = $c['key']; ?>
                                             data-<?= $h($k) ?>="<?= $h($u[$k] ?? '') ?>"
                                         <?php endforeach; ?>>
-                                    Bearbeiten
+                                    <span class="ui-icon ui-icon-edit" aria-hidden="true"></span>
                                 </button>
                                 <?php if (!$isSelf): ?>
-                                    <button type="button" class="btn btn-sm btn-toggle-disabled"
+                                    <button type="button" class="btn btn-sm btn-icon btn-toggle-disabled"
+                                            title="<?= $disabled ? 'Aktivieren' : 'Deaktivieren' ?>"
+                                            aria-label="<?= $disabled ? 'Aktivieren' : 'Deaktivieren' ?>"
                                             data-id="<?= $uid ?>"
                                             data-username="<?= $h($u['username']) ?>"
                                             data-disabled="<?= $disabled ?>">
-                                        <?= $disabled ? 'Aktivieren' : 'Deaktivieren' ?>
+                                        <span class="ui-icon ui-icon-<?= $disabled ? 'check' : 'ban' ?>" aria-hidden="true"></span>
                                     </button>
                                 <?php endif; ?>
-                                <button type="button" class="btn btn-sm btn-reset"
+                                <button type="button" class="btn btn-sm btn-icon btn-reset"
+                                        title="Passwort-Reset" aria-label="Passwort-Reset"
                                         data-id="<?= $uid ?>"
                                         data-username="<?= $h($u['username']) ?>">
-                                    Passwort-Reset
+                                    <span class="ui-icon ui-icon-key" aria-hidden="true"></span>
                                 </button>
                                 <?php if ($hasTotp): ?>
-                                    <button type="button" class="btn btn-sm btn-revoke-totp"
+                                    <button type="button" class="btn btn-sm btn-icon btn-revoke-totp"
+                                            title="2FA widerrufen" aria-label="2FA widerrufen"
                                             data-id="<?= $uid ?>"
                                             data-username="<?= $h($u['username']) ?>">
-                                        2FA widerrufen
+                                        <span class="ui-icon ui-icon-shield-off" aria-hidden="true"></span>
                                     </button>
                                 <?php endif; ?>
                                 <?php if (!$isSelf): ?>
-                                    <button type="button" class="btn btn-sm btn-danger btn-delete"
+                                    <button type="button" class="btn btn-sm btn-icon btn-danger btn-delete"
+                                            title="Löschen" aria-label="Löschen"
                                             data-id="<?= $uid ?>"
                                             data-username="<?= $h($u['username']) ?>">
-                                        Löschen
+                                        <span class="ui-icon ui-icon-delete" aria-hidden="true"></span>
                                     </button>
                                 <?php endif; ?>
                             </td>

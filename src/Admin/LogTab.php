@@ -26,41 +26,48 @@ final class LogTab
 
                 <form id="logFilterForm" class="log-filter-form"
                       style="display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; align-items:end">
-                    <div class="form-group">
+                    <div class="form-group" style="width:9rem">
                         <label for="log_app">App</label>
                         <select id="log_app" name="app" class="form-control">
                             <option value="">Alle</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="width:9rem">
                         <label for="log_context">Kontext</label>
                         <select id="log_context" name="context" class="form-control">
                             <option value="">Alle</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="width:8rem">
                         <label for="log_user">Benutzer</label>
                         <input type="text" id="log_user" name="user" class="form-control" placeholder="username">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="width:7.5rem">
                         <label for="log_from">Von</label>
-                        <input type="text" id="log_from" name="from" class="form-control" placeholder="YYYY-MM-DD">
+                        <input type="date" id="log_from" name="from" class="form-control">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="width:7.5rem">
                         <label for="log_to">Bis</label>
-                        <input type="text" id="log_to" name="to" class="form-control" placeholder="YYYY-MM-DD">
+                        <input type="date" id="log_to" name="to" class="form-control">
                     </div>
-                    <div class="form-group" style="flex:1; min-width:14rem">
+                    <div class="form-group" style="flex:1; min-width:10rem">
                         <label for="log_q">Suche in Aktivität</label>
                         <input type="text" id="log_q" name="q" class="form-control" placeholder="Text">
                     </div>
-                    <div class="form-group" style="text-align:center">
-                        <label for="log_fail">nur Fehler</label>
-                        <input type="checkbox" id="log_fail" name="fail" value="1">
+                    <div class="form-group">
+                        <div><label for="log_fail">nur Fehler</label></div>
+                        <div style="height:calc(1.5em + 0.75rem + 2px); display:flex; align-items:center; justify-content:center; padding:0 .75rem">
+                            <input type="checkbox" id="log_fail" name="fail" value="1">
+                        </div>
                     </div>
-                    <div class="form-group" style="display:flex; gap:.5rem">
-                        <button type="submit" class="btn">Filter</button>
-                        <button type="reset" class="btn btn-outline-danger" id="logReset">Zurücksetzen</button>
+                    <div class="form-group" style="display:flex; gap:.25rem">
+                        <button type="submit" class="btn btn-icon" title="Filter anwenden" aria-label="Filter anwenden">
+                            <span class="ui-icon ui-icon-filter" aria-hidden="true"></span>
+                        </button>
+                        <button type="reset" class="btn btn-icon btn-outline-danger" id="logReset"
+                                title="Zurücksetzen" aria-label="Zurücksetzen">
+                            <span class="ui-icon ui-icon-close" aria-hidden="true"></span>
+                        </button>
                     </div>
                 </form>
 

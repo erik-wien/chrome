@@ -60,7 +60,7 @@ final class Dispatch
                 default                          => self::out(['ok' => false, 'error' => 'unknown_action'], 400),
             };
         } catch (\Throwable $e) {
-            \appendLog($con, 'admin', 'Dispatch error: ' . $e->getMessage(), 'web');
+            \appendLog($con, 'admin', 'Dispatch error: ' . $e->getMessage());
             self::out(['ok' => false, 'error' => 'server_error'], 500);
         }
     }
@@ -148,7 +148,7 @@ final class Dispatch
             return;
         }
         $ok = Users::setDisabled($con, $id, $disabled);
-        \appendLog($con, 'admin', 'User #' . $id . ($disabled ? ' disabled.' : ' enabled.'), 'web');
+        \appendLog($con, 'admin', 'User #' . $id . ($disabled ? ' disabled.' : ' enabled.'));
         self::out(['ok' => (bool) $ok, 'disabled' => $disabled ? 1 : 0]);
     }
 
@@ -160,7 +160,7 @@ final class Dispatch
             return;
         }
         $ok = Users::revokeTotp($con, $id);
-        \appendLog($con, 'admin', 'User #' . $id . ' 2FA revoked.', 'web');
+        \appendLog($con, 'admin', 'User #' . $id . ' 2FA revoked.');
         self::out(['ok' => (bool) $ok]);
     }
 
@@ -172,7 +172,7 @@ final class Dispatch
             return;
         }
         $ok = Users::resetInvalidLogins($con, $id);
-        \appendLog($con, 'admin', 'User #' . $id . ' invalidLogins cleared.', 'web');
+        \appendLog($con, 'admin', 'User #' . $id . ' invalidLogins cleared.');
         self::out(['ok' => (bool) $ok]);
     }
 
