@@ -92,8 +92,8 @@ require_once __DIR__ . '/../inc/initialize.php';
 require_once __DIR__ . '/../inc/initialize.php';
 auth_require(); admin_require();
 
-// Render three-tab shell (App-Parameter / Users / Log) — see CLAUDE.md for
-// the canonical §15 layout. UsersTab + LogTab + UserModals do the work.
+// Render three-tab shell (App-Parameter / Users / Log) — UsersTab +
+// LogTab + UserModals cover the canonical admin layout.
 
 \Erikr\Chrome\Admin\UsersTab::render([...]);
 \Erikr\Chrome\Admin\LogTab::render();
@@ -115,11 +115,11 @@ if (str_starts_with($action, 'admin_')) {
 
 - **PHP ≥ 8.2** with GD (for `AvatarUpload`)
 - **erikr/auth** — session, CSRF, `admin_*` helpers, `appendLog()`, `auth_avatar_store()` / `_clear()`
-- **Shared CSS** — `~/Git/css` symlinked into the app's `web/css/shared/`. Chrome emits class names (`.app-header`, `.user-menu`, `.card-header-split`, etc.) that the CSS library provides.
+- **Shared CSS** — [`erikr/css`](https://github.com/erik-wien/css) symlinked into the app's `web/css/shared/`. Chrome emits class names (`.app-header`, `.user-menu`, `.card-header-split`, etc.) that the CSS library provides.
 
 ## Rules it implements
 
-The chrome library is the canonical implementation of the global UI rules from `~/.claude/rules/ui-design-rules.md`:
+The chrome library is the canonical implementation of the shared UI design rules published at [`erikr/css` → `docs/design-rules.md`](https://github.com/erik-wien/css/blob/main/docs/design-rules.md):
 
 - **§12** — fixed header structure (brand / AppMenu / user dropdown with fixed item order)
 - **§13** — fixed footer structure (Impressum / © / version)
@@ -128,7 +128,3 @@ The chrome library is the canonical implementation of the global UI rules from `
 - **§15.2** — create / edit via modals, never inline forms
 
 Apps that render chrome get compliance with those rules for free.
-
-## See also
-
-- [CLAUDE.md](CLAUDE.md) — public API reference, integration patterns, gotchas
