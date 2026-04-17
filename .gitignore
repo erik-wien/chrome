@@ -3,3 +3,11 @@
 /docs/superpowers/
 .DS_Store
 .phpunit.result.cache
+
+# Personal / agent workflow — not for publication
+CLAUDE.md
+.claude/
+docs/superpowers/
+update.md
+.env
+.env.*
