@@ -112,14 +112,12 @@ final class UserModals
      * Must be called on every admin page that uses UsersTab (alongside render()).
      * The modal is populated and opened by wireResetPreview() in admin.js.
      */
-    public static function renderResetPasswordModal(string $csrfToken): void
+    public static function renderResetPasswordModal(): void
     {
-        $h = static fn($v) => htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
         ?>
-        <div class="modal" id="resetPasswordModal" role="dialog"
-             aria-modal="true" aria-labelledby="resetPasswordModalTitle"
-             aria-hidden="true">
-            <div class="modal-dialog" tabindex="-1">
+        <div class="modal" id="resetPasswordModal" aria-hidden="true">
+            <div class="modal-dialog" role="dialog" aria-modal="true"
+                 aria-labelledby="resetPasswordModalTitle" tabindex="-1">
                 <div class="modal-header">
                     <h5 class="modal-title" id="resetPasswordModalTitle">Passwort-Reset bestätigen</h5>
                     <button type="button" class="btn-close" data-modal-close
@@ -139,7 +137,6 @@ final class UserModals
                 </div>
                 <div class="modal-footer">
                     <input type="hidden" id="resetPwId" value="">
-                    <input type="hidden" id="resetPwCsrf" value="<?= $h($csrfToken) ?>">
                     <button type="button" class="btn" data-modal-close>Abbrechen</button>
                     <button type="button" class="btn btn-outline-success"
                             id="resetPwConfirm">Bestätigen</button>
