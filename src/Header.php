@@ -18,6 +18,10 @@ namespace Erikr\Chrome;
  *       'pageType'    => 'daily',
  *       'appMenu'     => [
  *           ['href' => 'daily.php?date=…',  'label' => 'Aktuell', 'type' => 'daily'],
+ *           // Nested dropdown group (no 'href'; 'children' = sub-items):
+ *           ['label' => 'More', 'children' => [
+ *               ['href' => 'http://app.test', 'label' => 'App'],
+ *           ]],
  *       ],
  *       'extraItems'  => [],   // raw HTML snippets rendered before theme row
  *       'leftExtra'   => '',   // raw HTML snippet rendered inside .header-left
