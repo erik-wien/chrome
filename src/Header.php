@@ -145,7 +145,7 @@ final class Header
             $un = $e($username);
             echo '<div class="user-menu">';
             echo '<button class="user-btn" type="button" '
-               . 'aria-haspopup="menu" aria-expanded="false" aria-controls="user-dropdown">';
+               . 'aria-haspopup="menu" aria-expanded="false" aria-controls="user-dropdown" aria-label="Menü">';
             echo '<span>' . $un . '</span>';
             echo '<img src="' . $e((string) $avatarSrc) . '" class="avatar" '
                . 'width="26" height="26" alt="">';
@@ -154,87 +154,51 @@ final class Header
                . '<path d="M2 4l4 4 4-4"/></svg>';
             echo '</button>';
 
-            // Dropdown panel
-            $chevD = '<svg class="dd-acc-chevron" aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none"'
+            // Dropdown panel — .dd-main + .dd-sub panels (mobile drill-down)
+            $chevR = '<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none"'
                    . ' stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                   . '<path d="M1 3l4 4 4-4"/></svg>';
+                   . '<path d="M3 2l4 4-4 4"/></svg>';
+            $chevL = '<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" fill="none"'
+                   . ' stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                   . '<path d="M7 2l-4 4 4 4"/></svg>';
 
             echo '<div class="user-dropdown" id="user-dropdown">';
+            echo '<div class="dd-main">';
 
-            // ── Mobile accordion panel (hidden on desktop) ──────────────────
-            echo '<div class="dd-mobile-panel">';
-
-            foreach ($appMenu as $item) {
-                if (!empty($item['adminOnly']) && !$isAdmin) continue;
-                if (!isset($item['children'])) {
-                    $href     = (string) ($item['href'] ?? '#');
-                    $type     = (string) ($item['type'] ?? '');
-                    $activeCls = ($type !== '' && $type === $pageType) ? ' active' : '';
-                    echo '<a href="' . $e($href) . '" class="dropdown-link-btn' . $activeCls . '">'
-                       . $e((string) ($item['label'] ?? '')) . '</a>';
-                } else {
-                    echo '<div class="dd-acc">';
-                    echo '<button type="button" class="dd-acc-header" aria-expanded="false">'
-                       . $e((string) ($item['label'] ?? '')) . $chevD . '</button>';
-                    echo '<div class="dd-acc-body">';
-                    foreach ((array) $item['children'] as $child) {
-                        echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '" class="dropdown-link-btn">'
-                           . $e((string) ($child['label'] ?? '')) . '</a>';
-                    }
-                    echo '</div></div>';
-                }
-            }
-
+            // ── Nav section (mobile only — CSS hides at ≥768 px) ───────────
             if (!empty($appMenu)) {
+                echo '<div class="dropdown-nav-section">';
+                echo '<span class="dropdown-section-label">Apps</span>';
+                foreach ($appMenu as $item) {
+                    if (!isset($item['children'])) {
+                        $href      = (string) ($item['href'] ?? '#');
+                        $type      = (string) ($item['type'] ?? '');
+                        $activeCls = ($type !== '' && $type === $pageType) ? ' active' : '';
+                        echo '<a href="' . $e($href) . '" class="dropdown-link-btn' . $activeCls . '">'
+                           . $e((string) ($item['label'] ?? '')) . '</a>';
+                    } else {
+                        if (!empty($item['adminOnly']) && !$isAdmin) continue;
+                        $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($item['label'] ?? '')));
+                        echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
+                           . ' data-target="' . $e($subId) . '">'
+                           . $e((string) ($item['label'] ?? '')) . $chevR . '</button>';
+                    }
+                }
+                echo '</div>';
                 echo '<div class="dropdown-divider"></div>';
             }
 
-            // User accordion section
-            echo '<div class="dd-acc">';
-            echo '<button type="button" class="dd-acc-header" aria-expanded="false">'
-               . $un . $chevD . '</button>';
-            echo '<div class="dd-acc-body">';
-            echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
-            echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
-            if ($isAdmin) {
-                echo '<a href="' . $e((string) $adminHref) . '" class="dropdown-link-btn">Administration</a>';
-            }
-            if ($helpHref !== null) {
-                echo '<a href="' . $e((string) $helpHref) . '" class="dropdown-link-btn">Hilfe</a>';
-            }
-            if (!empty($extras)) {
-                echo '<div class="dropdown-divider"></div>';
-                foreach ($extras as $snippet) { echo (string) $snippet; }
-            }
-            echo '<div class="dropdown-divider"></div>';
-            echo '<div class="theme-row">';
-            foreach (['light' => '☀', 'auto' => '⬤', 'dark' => '🌙'] as $val => $icon) {
-                $active = ($theme === $val) ? ' active' : '';
-                echo '<button class="theme-btn' . $active . '" data-theme="' . $val . '" '
-                   . 'title="' . ($val === 'light' ? 'Hell' : ($val === 'dark' ? 'Dunkel' : 'Auto')) . '">'
-                   . $icon . '</button>';
-            }
-            echo '</div>';
-            echo '<div class="dropdown-divider"></div>';
-            echo '<form method="post" action="' . $e((string) $logoutHref) . '" style="margin:0">';
-            if ($csrf !== '') {
-                echo '<input type="hidden" name="csrf_token" value="' . $e($csrf) . '">';
-            }
-            echo '<button type="submit" class="dropdown-link-btn">Abmelden</button>';
-            echo '</form>';
-            echo '</div>'; // .dd-acc-body
-            echo '</div>'; // .dd-acc (user)
-
-            echo '</div>'; // .dd-mobile-panel
-
-            // ── Desktop direct links (hidden on mobile) ─────────────────────
-            echo '<div class="dd-desktop-panel">';
+            // ── Account section ─────────────────────────────────────────────
             echo '<span class="dropdown-username">' . $un . '</span>';
             echo '<div class="dropdown-divider"></div>';
-            echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
-            echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
+            // Mobile: single drill-down trigger into Konto sub-panel
+            echo '<button type="button" class="dd-trigger dd-chevron-btn dd-mobile dropdown-link-btn"'
+               . ' data-target="dd-sub-konto">Konto' . $chevR . '</button>';
+            // Desktop: direct links
+            echo '<a href="' . $e((string) $prefsHref) . '" class="dd-desktop dropdown-link-btn">Einstellungen</a>';
+            echo '<a href="' . $e((string) $securityHref) . '" class="dd-desktop dropdown-link-btn">Passwort &amp; 2FA</a>';
             if ($isAdmin) {
-                echo '<a href="' . $e((string) $adminHref) . '" class="dropdown-link-btn">Administration</a>';
+                echo '<a href="' . $e((string) $adminHref) . '" class="dd-desktop dropdown-link-btn">Administration</a>';
             }
             if ($helpHref !== null) {
                 echo '<a href="' . $e((string) $helpHref) . '" class="dropdown-link-btn">Hilfe</a>';
@@ -259,7 +223,32 @@ final class Header
             }
             echo '<button type="submit" class="dropdown-link-btn">Abmelden</button>';
             echo '</form>';
-            echo '</div>'; // .dd-desktop-panel
+            echo '</div>'; // .dd-main
+
+            // ── Sub-panels ──────────────────────────────────────────────────
+            // App drill-downs (from appMenu items with children)
+            foreach ($appMenu as $item) {
+                if (!isset($item['children'])) continue;
+                if (!empty($item['adminOnly']) && !$isAdmin) continue;
+                $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($item['label'] ?? '')));
+                echo '<div class="dd-sub" id="' . $e($subId) . '">';
+                echo '<button type="button" class="dd-back dropdown-link-btn">'
+                   . $chevL . ' ' . $e((string) ($item['label'] ?? '')) . '</button>';
+                foreach ((array) $item['children'] as $child) {
+                    echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '" class="dropdown-link-btn">'
+                       . $e((string) ($child['label'] ?? '')) . '</a>';
+                }
+                echo '</div>';
+            }
+            // Konto sub-panel
+            echo '<div class="dd-sub" id="dd-sub-konto">';
+            echo '<button type="button" class="dd-back dropdown-link-btn">' . $chevL . ' Konto</button>';
+            echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
+            echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
+            if ($isAdmin) {
+                echo '<a href="' . $e((string) $adminHref) . '" class="dropdown-link-btn">Administration</a>';
+            }
+            echo '</div>';
 
             echo '</div>'; // .user-dropdown
             echo '</div>'; // .user-menu
@@ -305,15 +294,18 @@ final class Header
             echo 'btn.addEventListener("click",function(e){'
                . 'e.stopPropagation();menu.classList.toggle("open");'
                . 'btn.setAttribute("aria-expanded",menu.classList.contains("open")?"true":"false");});';
-            echo 'function collapseAcc(){menu.querySelectorAll(".dd-acc.open").forEach(function(a){a.classList.remove("open");var h=a.querySelector(".dd-acc-header");if(h)h.setAttribute("aria-expanded","false");});}';
+            echo 'function resetDd(){menu.querySelectorAll(".dd-sub").forEach(function(s){s.classList.remove("dd-open");});var m=menu.querySelector(".dd-main");if(m)m.classList.remove("dd-collapsed");}';
             echo 'document.addEventListener("click",function(e){'
                . 'if(e.target.closest(".user-menu"))return;'
-               . 'menu.classList.remove("open");btn.setAttribute("aria-expanded","false");collapseAcc();});';
-            echo 'menu.querySelectorAll(".dd-acc-header").forEach(function(h){'
-               . 'h.addEventListener("click",function(e){e.stopPropagation();'
-               . 'var a=h.closest(".dd-acc");if(!a)return;'
-               . 'var open=a.classList.toggle("open");'
-               . 'h.setAttribute("aria-expanded",open?"true":"false");});});';
+               . 'menu.classList.remove("open");btn.setAttribute("aria-expanded","false");resetDd();});';
+            echo 'menu.querySelectorAll(".dd-trigger").forEach(function(b){'
+               . 'b.addEventListener("click",function(e){e.stopPropagation();'
+               . 'var t=document.getElementById(b.dataset.target);var m=menu.querySelector(".dd-main");'
+               . 'if(t)t.classList.add("dd-open");if(m)m.classList.add("dd-collapsed");});});';
+            echo 'menu.querySelectorAll(".dd-back").forEach(function(b){'
+               . 'b.addEventListener("click",function(e){e.stopPropagation();'
+               . 'var s=b.closest(".dd-sub");var m=menu.querySelector(".dd-main");'
+               . 'if(s)s.classList.remove("dd-open");if(m)m.classList.remove("dd-collapsed");});});';
             echo 'var csrf=' . json_encode($csrf) . ';';
             echo 'var endpoint=' . json_encode((string) $themeEndpoint) . ';';
             echo 'menu.querySelectorAll(".theme-btn").forEach(function(btn){';
