@@ -108,6 +108,48 @@ final class UserModals
     }
 
     /**
+     * Render the reset-password confirmation modal.
+     * Must be called on every admin page that uses UsersTab (alongside render()).
+     * The modal is populated and opened by wireResetPreview() in admin.js.
+     */
+    public static function renderResetPasswordModal(string $csrfToken): void
+    {
+        $h = static fn($v) => htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
+        ?>
+        <div class="modal" id="resetPasswordModal" role="dialog"
+             aria-modal="true" aria-labelledby="resetPasswordModalTitle"
+             aria-hidden="true">
+            <div class="modal-dialog" tabindex="-1">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resetPasswordModalTitle">Passwort-Reset bestätigen</h5>
+                    <button type="button" class="btn-close" data-modal-close
+                            aria-label="Schließen">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="resetPasswordAlerts" class="modal-alerts"></div>
+                    <p>Benutzer: <strong id="resetPwUsername"></strong>
+                       (<span id="resetPwEmail"></span>)</p>
+                    <p>Hiermit wird:</p>
+                    <ol>
+                        <li>Eine neue Passwort-Reset-E-Mail versendet</li>
+                        <li>Der Fehlversuche-Zähler auf 0 gesetzt</li>
+                        <li>Folgende IPs aus der Blacklist entfernt:
+                            <span id="resetPwIps" class="text-muted">—</span></li>
+                    </ol>
+                </div>
+                <div class="modal-footer">
+                    <input type="hidden" id="resetPwId" value="">
+                    <input type="hidden" id="resetPwCsrf" value="<?= $h($csrfToken) ?>">
+                    <button type="button" class="btn" data-modal-close>Abbrechen</button>
+                    <button type="button" class="btn btn-outline-success"
+                            id="resetPwConfirm">Bestätigen</button>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    /**
      * @param array<string,mixed> $f
      */
     private static function renderField(array $f, string $prefix, mixed $value, callable $h): void

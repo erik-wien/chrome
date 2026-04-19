@@ -24,7 +24,7 @@ use mysqli;
  *
  * Assumes erikr/auth is loaded: auth_require(), admin_require(), csrf_verify(),
  * admin_create_user(), admin_edit_user(), admin_delete_user(),
- * admin_reset_password(), appendLog().
+ * admin_reset_password(), admin_user_reset_preview(), appendLog().
  */
 final class Dispatch
 {
@@ -53,6 +53,7 @@ final class Dispatch
                 'admin_user_edit'                => self::userEdit($con, $ctx),
                 'admin_user_delete'              => self::userDelete($con, $ctx),
                 'admin_user_reset'               => self::userReset($con, $ctx),
+                'admin_user_reset_preview'       => self::userResetPreview($con),
                 'admin_user_toggle_disabled'     => self::userToggleDisabled($con),
                 'admin_user_revoke_totp'         => self::userRevokeTotp($con),
                 'admin_user_reset_invalid'       => self::userResetInvalid($con),
@@ -135,8 +136,19 @@ final class Dispatch
             self::out(['ok' => false, 'error' => 'missing_id'], 400);
             return;
         }
-        $ok = \admin_reset_password($con, $id, $baseUrl);
-        self::out(['ok' => (bool) $ok]);
+        $result = \admin_reset_password($con, $id, $baseUrl);
+        self::out(['ok' => (bool) $result['ok'], 'unblocked_ips' => $result['unblocked_ips'] ?? []]);
+    }
+
+    private static function userResetPreview(mysqli $con): void
+    {
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            self::out(['ok' => false, 'error' => 'missing_id'], 400);
+            return;
+        }
+        $data = \admin_user_reset_preview($con, $id);
+        self::out($data);
     }
 
     private static function userToggleDisabled(mysqli $con): void
