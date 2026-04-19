@@ -42,14 +42,17 @@ final class UsersTab
 
         $h = static fn($v) => htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
 
-        $statusBadge = static function (string $s) use ($h): string {
+        $statusIcon = static function (string $s) use ($h): string {
             return match ($s) {
-                'activated'      => '<span class="badge badge-success">aktiv</span>',
-                'invite-pending' => '<span class="badge badge-warning">Einladung offen</span>',
-                'reset-pending'  => '<span class="badge badge-warning">Passwort-Reset offen</span>',
-                default          => '<span class="badge">' . $h($s) . '</span>',
+                'activated'      => '<span class="ui-icon ui-icon-check is-success" aria-label="aktiv" title="aktiv"></span>',
+                'invite-pending' => '<span class="ui-icon ui-icon-hourglass is-warning" aria-label="Einladung offen" title="Einladung offen"></span>',
+                'reset-pending'  => '<span class="ui-icon ui-icon-hourglass is-warning" aria-label="Passwort-Reset offen" title="Passwort-Reset offen"></span>',
+                default          => '<span class="ui-icon" aria-label="' . $h($s) . '" title="' . $h($s) . '"></span>',
             };
         };
+        $disabledIcon = static fn(int $d): string => $d
+            ? '<span class="ui-icon ui-icon-close is-danger" aria-label="deaktiviert" title="deaktiviert"></span>'
+            : '<span class="ui-icon ui-icon-check is-success" aria-label="aktiv" title="aktiv"></span>';
 
         ?>
         <div class="card">
@@ -79,8 +82,8 @@ final class UsersTab
                             <th>Benutzer</th>
                             <th>E-Mail</th>
                             <th>Rechte</th>
-                            <th>Status</th>
-                            <th>Deaktiviert</th>
+                            <th style="text-align:center">Status</th>
+                            <th style="text-align:center">Deaktiviert</th>
                             <th>Letzter Login</th>
                             <th>IP</th>
                             <th title="Fehlgeschlagene Login-Versuche">Fehlversuche</th>
@@ -104,12 +107,8 @@ final class UsersTab
                             <td><?= $h($u['username']) ?></td>
                             <td><?= $h($u['email']) ?></td>
                             <td><?= $h($u['rights']) ?></td>
-                            <td><?= $statusBadge((string) ($u['activation'] ?? 'activated')) ?></td>
-                            <td>
-                                <?= $disabled
-                                    ? '<span class="badge badge-danger">ja</span>'
-                                    : '<span class="badge badge-success">nein</span>' ?>
-                            </td>
+                            <td style="text-align:center"><?= $statusIcon((string) ($u['activation'] ?? 'activated')) ?></td>
+                            <td style="text-align:center"><?= $disabledIcon($disabled) ?></td>
                             <td><?= $lastLogin ? $h($lastLogin) : '<span class="text-muted">—</span>' ?></td>
                             <td><?= $lastIp ? '<code>' . $h($lastIp) . '</code>' : '<span class="text-muted">—</span>' ?></td>
                             <td>
