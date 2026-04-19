@@ -114,7 +114,7 @@ final class Header
                     $ddLabel = $e((string) ($item['label'] ?? ''));
                     echo '<div class="header-dropdown">';
                     echo '<button type="button" class="header-dropdown-trigger"'
-                       . ' aria-haspopup="true" aria-expanded="false">'
+                       . ' aria-haspopup="menu" aria-expanded="false">'
                        . $ddLabel
                        . '<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"'
                        . ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">'
@@ -296,9 +296,18 @@ final class Header
                . 'btn.setAttribute("aria-expanded",menu.classList.contains("open")?"true":"false");});';
             // Only close when the click is OUTSIDE the user-menu. Clicks on
             // .dd-trigger inside the dropdown must not collapse the whole menu.
+            echo 'function resetDd(){menu.querySelectorAll(".dd-sub").forEach(function(s){s.classList.remove("dd-open");});var m=menu.querySelector(".dd-main");if(m)m.classList.remove("dd-collapsed");}';
             echo 'document.addEventListener("click",function(e){'
                . 'if(e.target.closest(".user-menu"))return;'
-               . 'menu.classList.remove("open");btn.setAttribute("aria-expanded","false");});';
+               . 'menu.classList.remove("open");btn.setAttribute("aria-expanded","false");resetDd();});';
+            echo 'menu.querySelectorAll(".dd-trigger").forEach(function(b){'
+               . 'b.addEventListener("click",function(e){e.stopPropagation();'
+               . 'var t=document.getElementById(b.dataset.target);var m=menu.querySelector(".dd-main");'
+               . 'if(t)t.classList.add("dd-open");if(m)m.classList.add("dd-collapsed");});});';
+            echo 'menu.querySelectorAll(".dd-back").forEach(function(b){'
+               . 'b.addEventListener("click",function(e){e.stopPropagation();'
+               . 'var s=b.closest(".dd-sub");var m=menu.querySelector(".dd-main");'
+               . 'if(s)s.classList.remove("dd-open");if(m)m.classList.remove("dd-collapsed");});});';
             echo 'var csrf=' . json_encode($csrf) . ';';
             echo 'var endpoint=' . json_encode((string) $themeEndpoint) . ';';
             echo 'menu.querySelectorAll(".theme-btn").forEach(function(btn){';
