@@ -43,7 +43,7 @@ composer install
 ```php
 require 'vendor/autoload.php';
 
-define('AUTH_DB_PREFIX', 'jardyx_auth.');      // from erikr/auth
+define('AUTH_DB_PREFIX', 'auth.');      // from erikr/auth
 define('RATE_LIMIT_FILE', __DIR__ . '/data/ratelimit.json');
 define('APP_VERSION', '1.2');
 define('APP_BUILD',   '34');
@@ -115,11 +115,11 @@ if (str_starts_with($action, 'admin_')) {
 
 - **PHP ≥ 8.2** with GD (for `AvatarUpload`)
 - **erikr/auth** — session, CSRF, `admin_*` helpers, `appendLog()`, `auth_avatar_store()` / `_clear()`
-- **Shared CSS** — [`erikr/css`](https://github.com/erik-wien/css) symlinked into the app's `web/css/shared/`. Chrome emits class names (`.app-header`, `.user-menu`, `.card-header-split`, etc.) that the CSS library provides.
+- **Shared CSS** — `~/Git/css_library` symlinked into the app's `web/css/shared/`. Chrome emits class names (`.app-header`, `.user-menu`, `.card-header-split`, etc.) that the CSS library provides.
 
 ## Rules it implements
 
-The chrome library is the canonical implementation of the shared UI design rules published at [`erikr/css` → `docs/design-rules.md`](https://github.com/erik-wien/css/blob/main/docs/design-rules.md):
+The chrome library is the canonical implementation of the shared UI design rules published at `~/Git/css_library/docs/design-rules.md`:
 
 - **§12** — fixed header structure (brand / AppMenu / user dropdown with fixed item order)
 - **§13** — fixed footer structure (Impressum / © / version)

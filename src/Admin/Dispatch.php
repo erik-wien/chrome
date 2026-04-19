@@ -105,7 +105,7 @@ final class Dispatch
             self::out(['ok' => false, 'error' => 'missing_fields'], 400);
             return;
         }
-        $ok = \admin_edit_user($con, $id, $email, $rights, $disabled, 0, false);
+        $ok = \admin_edit_user($con, $id, $email, $rights, $disabled, false);
         self::out(['ok' => (bool) $ok]);
     }
 

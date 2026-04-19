@@ -29,8 +29,8 @@ final class UserModals
         $h           = static fn($v) => htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
         ?>
         <!-- Create Modal -->
-        <div class="modal" id="createModal" aria-labelledby="createModalTitle">
-            <div class="modal-dialog">
+        <div class="modal" id="createModal" aria-hidden="true">
+            <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="createModalTitle" tabindex="-1">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createModalTitle">Benutzer anlegen</h5>
                     <button type="button" class="btn-close" data-modal-close aria-label="Schließen">&times;</button>
@@ -67,8 +67,8 @@ final class UserModals
         </div>
 
         <!-- Edit Modal -->
-        <div class="modal" id="editModal" aria-labelledby="editModalTitle">
-            <div class="modal-dialog">
+        <div class="modal" id="editModal" aria-hidden="true">
+            <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" tabindex="-1">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editModalTitle">Benutzer bearbeiten: <span id="editUsername"></span></h5>
                     <button type="button" class="btn-close" data-modal-close aria-label="Schließen">&times;</button>

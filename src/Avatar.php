@@ -36,7 +36,7 @@ final class Avatar
             return;
         }
 
-        $table = (defined('AUTH_DB_PREFIX') ? AUTH_DB_PREFIX : 'jardyx_auth.') . 'auth_accounts';
+        $table = (defined('AUTH_DB_PREFIX') ? AUTH_DB_PREFIX : 'auth.') . 'auth_accounts';
         try {
             $stmt = $con->prepare('SELECT img_blob FROM ' . $table . ' WHERE id = ? AND img_blob IS NOT NULL');
             $stmt->bind_param('i', $uid);
