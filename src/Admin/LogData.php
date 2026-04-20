@@ -39,9 +39,11 @@ final class LogData
             $params[] = $filters['context'];
         }
         if (!empty($filters['user'])) {
-            $where[]  = 'a.username LIKE ?';
-            $types   .= 's';
-            $params[] = '%' . self::escLike($filters['user']) . '%';
+            $where[]  = '(a.username LIKE ? OR ai.username LIKE ?)';
+            $types   .= 'ss';
+            $like     = '%' . self::escLike($filters['user']) . '%';
+            $params[] = $like;
+            $params[] = $like;
         }
         if (!empty($filters['from'])) {
             $where[]  = 'l.logTime >= ?';
@@ -66,9 +68,13 @@ final class LogData
         $offset   = ($page - 1) * $perPage;
 
         $sql = "SELECT l.id, l.logTime, l.origin, l.context, l.activity,
-                       INET_NTOA(l.ipAdress) AS ip, a.username
+                       INET_NTOA(l.ipAdress) AS ip,
+                       CASE WHEN ai.username IS NOT NULL
+                            THEN CONCAT(ai.username, ':', a.username)
+                            ELSE a.username END AS username
                 FROM {$lTable} l
-                LEFT JOIN {$aTable} a ON a.id = l.idUser
+                LEFT JOIN {$aTable} a  ON a.id  = l.idUser
+                LEFT JOIN {$aTable} ai ON ai.id = l.impersonator_id
                 {$whereSql}
                 ORDER BY l.logTime DESC, l.id DESC
                 LIMIT ? OFFSET ?";
@@ -94,7 +100,8 @@ final class LogData
         $stmt->close();
 
         $countSql = "SELECT COUNT(*) FROM {$lTable} l
-                     LEFT JOIN {$aTable} a ON a.id = l.idUser
+                     LEFT JOIN {$aTable} a  ON a.id  = l.idUser
+                     LEFT JOIN {$aTable} ai ON ai.id = l.impersonator_id
                      {$whereSql}";
         $cstmt = $con->prepare($countSql);
         if ($params) {
