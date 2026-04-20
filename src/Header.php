@@ -189,19 +189,12 @@ final class Header
             }
 
             // ── Account section ─────────────────────────────────────────────
-            echo '<span class="dropdown-username">' . $un . '</span>';
+            echo '<span class="dropdown-username">Konto</span>';
             echo '<div class="dropdown-divider"></div>';
-            // Mobile: single drill-down trigger into Konto sub-panel
-            echo '<button type="button" class="dd-trigger dd-chevron-btn dd-mobile dropdown-link-btn"'
-               . ' data-target="dd-sub-konto">Konto' . $chevR . '</button>';
-            // Desktop: direct links
-            echo '<a href="' . $e((string) $prefsHref) . '" class="dd-desktop dropdown-link-btn">Einstellungen</a>';
-            echo '<a href="' . $e((string) $securityHref) . '" class="dd-desktop dropdown-link-btn">Passwort &amp; 2FA</a>';
+            echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
+            echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
             if ($isAdmin) {
-                echo '<a href="' . $e((string) $adminHref) . '" class="dd-desktop dropdown-link-btn">Administration</a>';
-            }
-            if ($helpHref !== null) {
-                echo '<a href="' . $e((string) $helpHref) . '" class="dropdown-link-btn">Hilfe</a>';
+                echo '<a href="' . $e((string) $adminHref) . '" class="dropdown-link-btn">Administration</a>';
             }
             if (!empty($extras)) {
                 echo '<div class="dropdown-divider"></div>';
@@ -217,6 +210,9 @@ final class Header
             }
             echo '</div>';
             echo '<div class="dropdown-divider"></div>';
+            if ($helpHref !== null) {
+                echo '<a href="' . $e((string) $helpHref) . '" class="dropdown-link-btn">Hilfe</a>';
+            }
             echo '<form method="post" action="' . $e((string) $logoutHref) . '" style="margin:0">';
             if ($csrf !== '') {
                 echo '<input type="hidden" name="csrf_token" value="' . $e($csrf) . '">';
@@ -240,15 +236,6 @@ final class Header
                 }
                 echo '</div>';
             }
-            // Konto sub-panel
-            echo '<div class="dd-sub" id="dd-sub-konto">';
-            echo '<button type="button" class="dd-back dropdown-link-btn">' . $chevL . ' Konto</button>';
-            echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
-            echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
-            if ($isAdmin) {
-                echo '<a href="' . $e((string) $adminHref) . '" class="dropdown-link-btn">Administration</a>';
-            }
-            echo '</div>';
 
             echo '</div>'; // .user-dropdown
             echo '</div>'; // .user-menu
@@ -259,6 +246,42 @@ final class Header
 
         echo '</div>'; // .header-right
         echo '</header>';
+
+        // Impersonation banner — rendered below </header>; amber strip with end-session button.
+        if (function_exists('admin_is_impersonating') && admin_is_impersonating()) {
+            $info       = admin_impersonator_info();
+            $adminUser  = $info ? $e($info['username']) : '?';
+            $targetUser = $e($username);
+
+            echo '<div class="impersonation-banner" role="alert" aria-live="assertive">';
+            echo 'Angemeldet als <strong>' . $targetUser . '</strong>';
+            echo ' &middot; Admin: ' . $adminUser;
+            echo '<button type="button" class="btn-end-impersonation">Zur&uuml;ck zum Admin</button>';
+            echo '</div>';
+
+            // Push body padding-top and app-shell inset down to clear the banner.
+            echo '<style' . $nonceAttr . '>';
+            echo ':root{--impersonation-banner-height:40px;}';
+            echo 'body{padding-top:calc(var(--app-header-height) + var(--impersonation-banner-height))!important;}';
+            echo 'body.app-shell .app-shell-root{top:calc(var(--app-header-height) + var(--impersonation-banner-height))!important;}';
+            echo '</style>';
+
+            // End-impersonation via AJAX; redirect to admin.php on success.
+            echo '<script' . $nonceAttr . '>';
+            echo '(function(){';
+            echo 'var btn=document.querySelector(".btn-end-impersonation");';
+            echo 'if(!btn)return;';
+            echo 'btn.addEventListener("click",function(){';
+            echo 'var fd=new FormData();';
+            echo 'fd.append("action","admin_impersonate_end");';
+            echo 'fd.append("csrf_token",' . json_encode($csrf) . ');';
+            echo 'fetch(' . json_encode($base . '/api.php') . ',{method:"POST",body:fd})';
+            echo '.then(function(r){return r.json();})';
+            echo '.then(function(d){if(d.ok){window.location.href=' . json_encode((string) $adminHref) . ';}});';
+            echo '});';
+            echo '})();';
+            echo '</script>';
+        }
 
         // ── forms.js (clear buttons for all eligible inputs) ────────────
         if (is_string($formsJsPath) && $formsJsPath !== '') {
