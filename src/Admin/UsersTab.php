@@ -173,6 +173,14 @@ final class UsersTab
                                         <span class="ui-icon ui-icon-shield-off" aria-hidden="true"></span>
                                     </button>
                                 <?php endif; ?>
+                                <?php if (!$isSelf && $u['rights'] !== 'Admin' && !$disabled): ?>
+                                    <button type="button" class="btn btn-sm btn-impersonate"
+                                            title="Als <?= $h($u['username']) ?> anmelden"
+                                            data-id="<?= $uid ?>"
+                                            data-username="<?= $h($u['username']) ?>">
+                                        Anmelden als
+                                    </button>
+                                <?php endif; ?>
                                 <?php if (!$isSelf): ?>
                                     <button type="button" class="btn btn-sm btn-icon btn-danger btn-delete"
                                             title="Löschen" aria-label="Löschen"

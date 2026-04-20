@@ -33,6 +33,26 @@ final class Dispatch
     {
         header('Content-Type: application/json; charset=utf-8');
 
+        // admin_impersonate_end bypasses the Admin rights check — it is called while the
+        // session holds the impersonated user's rights (User), not the real admin's.
+        if ($action === 'admin_impersonate_end') {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                self::out(['ok' => false, 'error' => 'method_not_allowed'], 405);
+                return;
+            }
+            if (!\csrf_verify()) {
+                self::out(['ok' => false, 'error' => 'csrf'], 403);
+                return;
+            }
+            if (empty($_SESSION['loggedin'])) {
+                self::out(['ok' => false, 'error' => 'forbidden'], 403);
+                return;
+            }
+            $ok = \admin_impersonate_end($con);
+            self::out(['ok' => $ok]);
+            return;
+        }
+
         if (($_SESSION['rights'] ?? '') !== 'Admin') {
             self::out(['ok' => false, 'error' => 'forbidden'], 403);
             return;
@@ -57,6 +77,7 @@ final class Dispatch
                 'admin_user_toggle_disabled'     => self::userToggleDisabled($con),
                 'admin_user_revoke_totp'         => self::userRevokeTotp($con),
                 'admin_user_reset_invalid'       => self::userResetInvalid($con),
+                'admin_impersonate_begin'        => self::impersonateBegin($con),
                 'admin_log_list'                 => self::logList($con),
                 default                          => self::out(['ok' => false, 'error' => 'unknown_action'], 400),
             };
@@ -186,6 +207,17 @@ final class Dispatch
         $ok = Users::resetInvalidLogins($con, $id);
         \appendLog($con, 'admin', 'User #' . $id . ' invalidLogins cleared.');
         self::out(['ok' => (bool) $ok]);
+    }
+
+    private static function impersonateBegin(mysqli $con): void
+    {
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id <= 0) {
+            self::out(['ok' => false, 'error' => 'missing_id'], 400);
+            return;
+        }
+        $ok = \admin_impersonate_begin($con, $id);
+        self::out(['ok' => $ok]);
     }
 
     private static function logList(mysqli $con): void
