@@ -143,24 +143,23 @@ final class Header
                     echo '<a href="' . $e($href) . '"' . $activeAttr . '>' . $e($label) . '</a>';
                 }
             }
-            if (!empty($appsMenu)) {
-                echo '<div class="header-dropdown">';
-                echo '<button type="button" class="header-dropdown-trigger"'
-                   . ' aria-haspopup="menu" aria-expanded="false">Apps' . $ddChevron . '</button>';
-                echo '<div class="header-dropdown-panel">';
-                foreach ($appsMenu as $appsItem) {
-                    if (isset($appsItem['children'])) {
-                        echo '<span class="dropdown-section-label">' . $e((string) ($appsItem['label'] ?? '')) . '</span>';
-                        foreach ((array) $appsItem['children'] as $child) {
-                            echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '">'
-                               . $e((string) ($child['label'] ?? '')) . '</a>';
-                        }
-                    } else {
-                        echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '">'
-                           . $e((string) ($appsItem['label'] ?? '')) . '</a>';
+            foreach ($appsMenu as $appsItem) {
+                if (isset($appsItem['children'])) {
+                    $ddLabel = $e((string) ($appsItem['label'] ?? ''));
+                    echo '<div class="header-dropdown">';
+                    echo '<button type="button" class="header-dropdown-trigger"'
+                       . ' aria-haspopup="menu" aria-expanded="false">'
+                       . $ddLabel . $ddChevron . '</button>';
+                    echo '<div class="header-dropdown-panel">';
+                    foreach ((array) $appsItem['children'] as $child) {
+                        echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '">'
+                           . $e((string) ($child['label'] ?? '')) . '</a>';
                     }
+                    echo '</div></div>';
+                } else {
+                    echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '">'
+                       . $e((string) ($appsItem['label'] ?? '')) . '</a>';
                 }
-                echo '</div></div>';
             }
             echo '</nav>';
         }
@@ -209,9 +208,16 @@ final class Header
                            . $e((string) ($item['label'] ?? '')) . $chevR . '</button>';
                     }
                 }
-                if (!empty($appsMenu)) {
-                    echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
-                       . ' data-target="dd-sub-apps">Apps' . $chevR . '</button>';
+                foreach ($appsMenu as $appsItem) {
+                    if (isset($appsItem['children'])) {
+                        $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($appsItem['label'] ?? '')));
+                        echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
+                           . ' data-target="' . $e($subId) . '">'
+                           . $e((string) ($appsItem['label'] ?? '')) . $chevR . '</button>';
+                    } else {
+                        echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '" class="dropdown-link-btn">'
+                           . $e((string) ($appsItem['label'] ?? '')) . '</a>';
+                    }
                 }
                 echo '</div>';
                 echo '<div class="dropdown-divider"></div>';
@@ -283,21 +289,16 @@ final class Header
                 }
                 echo '</div>';
             }
-            // appsMenu drill-down panel
-            if (!empty($appsMenu)) {
-                echo '<div class="dd-sub" id="dd-sub-apps">';
-                echo '<button type="button" class="dd-back dropdown-link-btn">' . $chevL . ' Apps</button>';
-                foreach ($appsMenu as $appsItem) {
-                    if (isset($appsItem['children'])) {
-                        echo '<span class="dropdown-section-label">' . $e((string) ($appsItem['label'] ?? '')) . '</span>';
-                        foreach ((array) $appsItem['children'] as $child) {
-                            echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '" class="dropdown-link-btn">'
-                               . $e((string) ($child['label'] ?? '')) . '</a>';
-                        }
-                    } else {
-                        echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '" class="dropdown-link-btn">'
-                           . $e((string) ($appsItem['label'] ?? '')) . '</a>';
-                    }
+            // appsMenu drill-down panels — one per item that has children
+            foreach ($appsMenu as $appsItem) {
+                if (!isset($appsItem['children'])) continue;
+                $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($appsItem['label'] ?? '')));
+                echo '<div class="dd-sub" id="' . $e($subId) . '">';
+                echo '<button type="button" class="dd-back dropdown-link-btn">'
+                   . $chevL . ' ' . $e((string) ($appsItem['label'] ?? '')) . '</button>';
+                foreach ((array) $appsItem['children'] as $child) {
+                    echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '" class="dropdown-link-btn">'
+                       . $e((string) ($child['label'] ?? '')) . '</a>';
                 }
                 echo '</div>';
             }
@@ -354,9 +355,12 @@ final class Header
         }
 
         // ── Behaviour script: header nav dropdown ───────────────────────
-        $hasNavDropdown = !empty($appsMenu);
+        $hasNavDropdown = false;
+        foreach ($appMenu as $item) {
+            if (isset($item['children'])) { $hasNavDropdown = true; break; }
+        }
         if (!$hasNavDropdown) {
-            foreach ($appMenu as $item) {
+            foreach ($appsMenu as $item) {
                 if (isset($item['children'])) { $hasNavDropdown = true; break; }
             }
         }
