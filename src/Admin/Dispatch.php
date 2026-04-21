@@ -48,6 +48,11 @@ final class Dispatch
                 self::out(['ok' => false, 'error' => 'forbidden'], 403);
                 return;
             }
+            // Only active impersonators or Admins may call this.
+            if (!\admin_is_impersonating() && ($_SESSION['rights'] ?? '') !== 'Admin') {
+                self::out(['ok' => false, 'error' => 'forbidden'], 403);
+                return;
+            }
             $ok = \admin_impersonate_end($con);
             self::out(['ok' => $ok]);
             return;
