@@ -41,6 +41,7 @@ final class Header
         $csrf     = (string) ($a['csrfToken'] ?? '');
         $pageType = (string) ($a['pageType']  ?? '');
         $appMenu    = (array)  ($a['appMenu']   ?? []);
+        $appsMenu   = (array)  ($a['appsMenu']  ?? []);
         $extras     = (array)  ($a['extraItems'] ?? []);
         $leftExtra  = (string) ($a['leftExtra']  ?? '');
         $spritePath = $a['spritePath'] ?? null;
@@ -111,8 +112,11 @@ final class Header
         // ── Right cluster ───────────────────────────────────────────────
         echo '<div class="header-right">';
 
-        // AppMenu — optional, empty array = no menu
-        if (!empty($appMenu)) {
+        // AppMenu + AppsMenu — optional; nav rendered when either is non-empty
+        $ddChevron = '<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"'
+                   . ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">'
+                   . '<path d="M1 3l4 4 4-4"/></svg>';
+        if (!empty($appMenu) || !empty($appsMenu)) {
             echo '<nav class="header-nav">';
             foreach ($appMenu as $item) {
                 if (isset($item['children'])) {
@@ -121,11 +125,7 @@ final class Header
                     echo '<div class="header-dropdown">';
                     echo '<button type="button" class="header-dropdown-trigger"'
                        . ' aria-haspopup="menu" aria-expanded="false">'
-                       . $ddLabel
-                       . '<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"'
-                       . ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">'
-                       . '<path d="M1 3l4 4 4-4"/></svg>'
-                       . '</button>';
+                       . $ddLabel . $ddChevron . '</button>';
                     echo '<div class="header-dropdown-panel">';
                     foreach ((array) $item['children'] as $child) {
                         $childHref = (string) ($child['href'] ?? '#');
@@ -142,6 +142,25 @@ final class Header
                     $activeAttr = ($type !== '' && $type === $pageType) ? ' class="active"' : '';
                     echo '<a href="' . $e($href) . '"' . $activeAttr . '>' . $e($label) . '</a>';
                 }
+            }
+            if (!empty($appsMenu)) {
+                echo '<div class="header-dropdown">';
+                echo '<button type="button" class="header-dropdown-trigger"'
+                   . ' aria-haspopup="menu" aria-expanded="false">Apps' . $ddChevron . '</button>';
+                echo '<div class="header-dropdown-panel">';
+                foreach ($appsMenu as $appsItem) {
+                    if (isset($appsItem['children'])) {
+                        echo '<span class="dropdown-section-label">' . $e((string) ($appsItem['label'] ?? '')) . '</span>';
+                        foreach ((array) $appsItem['children'] as $child) {
+                            echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '">'
+                               . $e((string) ($child['label'] ?? '')) . '</a>';
+                        }
+                    } else {
+                        echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '">'
+                           . $e((string) ($appsItem['label'] ?? '')) . '</a>';
+                    }
+                }
+                echo '</div></div>';
             }
             echo '</nav>';
         }
@@ -172,7 +191,7 @@ final class Header
             echo '<div class="dd-main">';
 
             // ── Nav section (mobile only — CSS hides at ≥768 px) ───────────
-            if (!empty($appMenu)) {
+            if (!empty($appMenu) || !empty($appsMenu)) {
                 echo '<div class="dropdown-nav-section">';
                 echo '<span class="dropdown-section-label">Apps</span>';
                 foreach ($appMenu as $item) {
@@ -189,6 +208,10 @@ final class Header
                            . ' data-target="' . $e($subId) . '">'
                            . $e((string) ($item['label'] ?? '')) . $chevR . '</button>';
                     }
+                }
+                if (!empty($appsMenu)) {
+                    echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
+                       . ' data-target="dd-sub-apps">Apps' . $chevR . '</button>';
                 }
                 echo '</div>';
                 echo '<div class="dropdown-divider"></div>';
@@ -260,6 +283,24 @@ final class Header
                 }
                 echo '</div>';
             }
+            // appsMenu drill-down panel
+            if (!empty($appsMenu)) {
+                echo '<div class="dd-sub" id="dd-sub-apps">';
+                echo '<button type="button" class="dd-back dropdown-link-btn">' . $chevL . ' Apps</button>';
+                foreach ($appsMenu as $appsItem) {
+                    if (isset($appsItem['children'])) {
+                        echo '<span class="dropdown-section-label">' . $e((string) ($appsItem['label'] ?? '')) . '</span>';
+                        foreach ((array) $appsItem['children'] as $child) {
+                            echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '" class="dropdown-link-btn">'
+                               . $e((string) ($child['label'] ?? '')) . '</a>';
+                        }
+                    } else {
+                        echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '" class="dropdown-link-btn">'
+                           . $e((string) ($appsItem['label'] ?? '')) . '</a>';
+                    }
+                }
+                echo '</div>';
+            }
 
             echo '</div>'; // .user-dropdown
             echo '</div>'; // .user-menu
@@ -313,9 +354,11 @@ final class Header
         }
 
         // ── Behaviour script: header nav dropdown ───────────────────────
-        $hasNavDropdown = false;
-        foreach ($appMenu as $item) {
-            if (isset($item['children'])) { $hasNavDropdown = true; break; }
+        $hasNavDropdown = !empty($appsMenu);
+        if (!$hasNavDropdown) {
+            foreach ($appMenu as $item) {
+                if (isset($item['children'])) { $hasNavDropdown = true; break; }
+            }
         }
         if ($hasNavDropdown) {
             echo '<script' . $nonceAttr . '>';
