@@ -3,10 +3,10 @@ id: TASK-HIGH.1
 title: >-
   Header::render() — user dropdown: add Benutzereinstellungen group + Anwendung
   slot
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-04-21 16:25'
-updated_date: '2026-04-21 16:57'
+updated_date: '2026-04-21 17:02'
 labels: []
 dependencies: []
 parent_task_id: TASK-HIGH
@@ -29,8 +29,8 @@ Keep existing prefsHref/securityHref as aliases/fallbacks for backward compat.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 New params profileHref, emailHref, appPrefsHref, appPrefsLabel accepted by Header::render()
-- [ ] #2 User dropdown renders Benutzereinstellungen group with sub-items when hrefs provided
-- [ ] #3 Anwendung item appears between Benutzereinstellungen and Design when appPrefsHref set
-- [ ] #4 Existing apps with only prefsHref/securityHref still render correctly (no regression)
+- [x] #1 New params profileHref, emailHref, appPrefsHref, appPrefsLabel accepted by Header::render()
+- [x] #2 User dropdown renders Benutzereinstellungen group with sub-items when hrefs provided
+- [x] #3 Anwendung item appears between Benutzereinstellungen and Design when appPrefsHref set
+- [x] #4 Existing apps with only prefsHref/securityHref still render correctly (no regression)
 <!-- AC:END -->

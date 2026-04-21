@@ -1,10 +1,10 @@
 ---
 id: TASK-MEDIUM.2
 title: 'Header::render() — add named appsMenu parameter separate from appMenu'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-04-21 16:25'
-updated_date: '2026-04-21 17:05'
+updated_date: '2026-04-21 17:07'
 labels: []
 dependencies: []
 parent_task_id: TASK-MEDIUM
@@ -22,8 +22,8 @@ Test submenu should also move to appsMenu as a children entry.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 appsMenu parameter accepted by Header::render()
-- [ ] #2 appsMenu renders as distinct 'Apps' dropdown cluster in header-right
-- [ ] #3 Test submenu passed as children entry in appsMenu, not appMenu
-- [ ] #4 Apps without appsMenu still render correctly
+- [x] #1 appsMenu parameter accepted by Header::render()
+- [x] #2 appsMenu renders as distinct 'Apps' dropdown cluster in header-right
+- [x] #3 Test submenu passed as children entry in appsMenu, not appMenu
+- [x] #4 Apps without appsMenu still render correctly
 <!-- AC:END -->
