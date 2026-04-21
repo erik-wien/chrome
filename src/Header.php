@@ -61,12 +61,18 @@ final class Header
         $brandLogoSrc  = $a['brandLogoSrc']  ?? ($base . '/assets/jardyx.svg');
         $avatarSrc     = $a['avatarSrc']     ?? ($base . '/avatar.php');
         $prefsHref     = $a['prefsHref']     ?? ($base . '/preferences.php');
-        $securityHref  = $a['securityHref']  ?? ($base . '/security.php');
+        $securityHref  = $a['securityHref']  ?? ($base . '/password.php');
         $adminHref     = $a['adminHref']     ?? ($base . '/admin.php');
         $helpHref      = array_key_exists('helpHref', $a) ? $a['helpHref'] : ($base . '/help.php');
         $logoutHref    = $a['logoutHref']    ?? ($base . '/logout.php');
         $themeEndpoint = $a['themeEndpoint'] ?? ($base . '/preferences.php');
         $anonLoginHref = array_key_exists('anonLoginHref', $a) ? $a['anonLoginHref'] : ($base . '/login.php');
+
+        // Grouped user dropdown params (new — null = use legacy flat mode)
+        $profileHref   = $a['profileHref']  ?? null;
+        $emailHref     = $a['emailHref']    ?? null;
+        $appPrefsHref  = $a['appPrefsHref'] ?? null;
+        $appPrefsLabel = (string) ($a['appPrefsLabel'] ?? 'Anwendung');
 
         // forms.js path — defaults to the standard shared-symlink location;
         // pass formsJsPath => null to opt out, or an explicit path to override.
@@ -189,10 +195,28 @@ final class Header
             }
 
             // ── Account section ─────────────────────────────────────────────
-            echo '<span class="dropdown-username">Konto</span>';
-            echo '<div class="dropdown-divider"></div>';
-            echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
-            echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
+            if ($profileHref !== null) {
+                // Grouped Benutzereinstellungen section (new mode)
+                echo '<span class="dropdown-section-label">Benutzereinstellungen</span>';
+                echo '<a href="' . $e((string) $profileHref) . '" class="dropdown-link-btn">Profilbild</a>';
+                if ($emailHref !== null) {
+                    echo '<a href="' . $e((string) $emailHref) . '" class="dropdown-link-btn">E-Mail</a>';
+                }
+                echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Sicherheit</a>';
+                if ($appPrefsHref !== null || $isAdmin || !empty($extras)) {
+                    echo '<div class="dropdown-divider"></div>';
+                }
+                if ($appPrefsHref !== null) {
+                    echo '<a href="' . $e((string) $appPrefsHref) . '" class="dropdown-link-btn">'
+                       . $e($appPrefsLabel) . '</a>';
+                }
+            } else {
+                // Legacy flat mode — backwards-compatible
+                echo '<span class="dropdown-username">Konto</span>';
+                echo '<div class="dropdown-divider"></div>';
+                echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
+                echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
+            }
             if ($isAdmin) {
                 echo '<a href="' . $e((string) $adminHref) . '" class="dropdown-link-btn">Administration</a>';
             }
