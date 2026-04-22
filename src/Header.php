@@ -225,16 +225,15 @@ final class Header
 
             // ── Account section ─────────────────────────────────────────────
             if ($profileHref !== null) {
-                // Grouped Benutzereinstellungen section (new mode)
+                // Grouped mode: Benutzereinstellungen group (Profilbild + E-Mail only)
                 echo '<span class="dropdown-section-label">Benutzereinstellungen</span>';
                 echo '<a href="' . $e((string) $profileHref) . '" class="dropdown-link-btn">Profilbild</a>';
                 if ($emailHref !== null) {
                     echo '<a href="' . $e((string) $emailHref) . '" class="dropdown-link-btn">E-Mail</a>';
                 }
+                // Sicherheit is top-level per §12 — visually separate from the group above
+                echo '<div class="dropdown-divider"></div>';
                 echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Sicherheit</a>';
-                if ($appPrefsHref !== null || $isAdmin || !empty($extras)) {
-                    echo '<div class="dropdown-divider"></div>';
-                }
                 if ($appPrefsHref !== null) {
                     echo '<a href="' . $e((string) $appPrefsHref) . '" class="dropdown-link-btn">'
                        . $e($appPrefsLabel) . '</a>';
@@ -250,7 +249,6 @@ final class Header
                 echo '<a href="' . $e((string) $adminHref) . '" class="dropdown-link-btn">Administration</a>';
             }
             if (!empty($extras)) {
-                echo '<div class="dropdown-divider"></div>';
                 foreach ($extras as $snippet) { echo (string) $snippet; }
             }
             echo '<div class="dropdown-divider"></div>';

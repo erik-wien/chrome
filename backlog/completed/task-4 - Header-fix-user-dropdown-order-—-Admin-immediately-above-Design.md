@@ -1,10 +1,10 @@
 ---
 id: TASK-4
 title: 'Header: fix user dropdown order — Admin immediately above Design'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-21 19:23'
-updated_date: '2026-04-21 20:00'
+updated_date: '2026-04-22 04:45'
 labels: []
 dependencies: []
 priority: medium
