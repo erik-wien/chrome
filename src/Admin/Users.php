@@ -52,8 +52,8 @@ final class Users
                           LIMIT 1) AS has_pending_token,
                        (SELECT INET_NTOA(l.ipAdress) FROM {$lTable} l
                           WHERE l.idUser = a.id
-                            AND l.context = 'login'
-                            AND l.activity LIKE 'Login successful%'
+                            AND l.context = 'auth'
+                            AND l.activity LIKE '% logged in.'
                           ORDER BY l.logTime DESC LIMIT 1) AS lastIp
                 FROM {$aTable} a
                 {$where}

@@ -83,7 +83,7 @@ final class UsersTab
                             <th>E-Mail</th>
                             <th>Rechte</th>
                             <th style="text-align:center">Status</th>
-                            <th style="text-align:center">Deaktiviert</th>
+                            <th style="text-align:center">Aktiviert</th>
                             <th>Letzter Login</th>
                             <th>IP</th>
                             <th title="Fehlgeschlagene Login-Versuche">Fehlversuche</th>
