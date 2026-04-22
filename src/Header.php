@@ -144,6 +144,7 @@ final class Header
                 }
             }
             foreach ($appsMenu as $appsItem) {
+                if (!empty($appsItem['adminOnly']) && !$isAdmin) continue;
                 if (isset($appsItem['children'])) {
                     $ddLabel = $e((string) ($appsItem['label'] ?? ''));
                     echo '<div class="header-dropdown">';
@@ -209,6 +210,7 @@ final class Header
                     }
                 }
                 foreach ($appsMenu as $appsItem) {
+                    if (!empty($appsItem['adminOnly']) && !$isAdmin) continue;
                     if (isset($appsItem['children'])) {
                         $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($appsItem['label'] ?? '')));
                         echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
@@ -290,6 +292,7 @@ final class Header
             // appsMenu drill-down panels — one per item that has children
             foreach ($appsMenu as $appsItem) {
                 if (!isset($appsItem['children'])) continue;
+                if (!empty($appsItem['adminOnly']) && !$isAdmin) continue;
                 $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($appsItem['label'] ?? '')));
                 echo '<div class="dd-sub" id="' . $e($subId) . '">';
                 echo '<button type="button" class="dd-back dropdown-link-btn">'
