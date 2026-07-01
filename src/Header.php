@@ -99,9 +99,10 @@ final class Header
 
         // ── Left cluster ────────────────────────────────────────────────
         echo '<div class="header-left">';
-        echo '<a class="brand" href="' . $e((string) $brandHref) . '">';
-        echo '<img src="' . $e((string) $brandLogoSrc) . '" class="header-logo" '
-           . 'width="28" height="28" alt="">';
+        echo '<a class="brand" href="' . $e((string) $brandHref) . '" aria-label="' . $e($appName) . '">';
+        // Logo is a CSS-mask silhouette recoloured per app via --logo-color
+        // (layout.css). Decorative — the brand link's aria-label names it.
+        echo '<span class="header-logo" aria-hidden="true"></span>';
         echo '<span class="header-appname">' . $e($appName) . '</span>';
         echo '</a>';
         if ($leftExtra !== '') {
@@ -143,26 +144,55 @@ final class Header
                     echo '<a href="' . $e($href) . '"' . $activeAttr . '>' . $e($label) . '</a>';
                 }
             }
+            if (!empty($appMenu) && !empty($appsMenu)) {
+                echo '<span class="header-nav-sep" aria-hidden="true"></span>';
+            }
+            // Split appsMenu into plain links vs. items that already have children (e.g. Test)
+            $appsPlain = [];
+            $appsDrops = [];
             foreach ($appsMenu as $appsItem) {
                 if (!empty($appsItem['adminOnly']) && !$isAdmin) continue;
                 if (isset($appsItem['children'])) {
-                    $ddLabel = $e((string) ($appsItem['label'] ?? ''));
-                    echo '<div class="header-dropdown">';
-                    echo '<button type="button" class="header-dropdown-trigger"'
-                       . ' aria-haspopup="menu" aria-expanded="false">'
-                       . $ddLabel . $ddChevron . '</button>';
-                    echo '<div class="header-dropdown-panel">';
-                    foreach ((array) $appsItem['children'] as $child) {
-                        echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '">'
-                           . $e((string) ($child['label'] ?? '')) . '</a>';
-                    }
-                    echo '</div></div>';
+                    $appsDrops[] = $appsItem;
                 } else {
+                    $appsPlain[] = $appsItem;
+                }
+            }
+            // When appMenu items are present, collapse plain cross-app links into one "Links" dropdown
+            if (!empty($appMenu) && !empty($appsPlain)) {
+                echo '<div class="header-dropdown">';
+                echo '<button type="button" class="header-dropdown-trigger"'
+                   . ' aria-haspopup="menu" aria-expanded="false">Links' . $ddChevron . '</button>';
+                echo '<div class="header-dropdown-panel">';
+                foreach ($appsPlain as $appsItem) {
+                    echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '">'
+                       . $e((string) ($appsItem['label'] ?? '')) . '</a>';
+                }
+                echo '</div></div>';
+            } else {
+                foreach ($appsPlain as $appsItem) {
                     echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '">'
                        . $e((string) ($appsItem['label'] ?? '')) . '</a>';
                 }
             }
+            foreach ($appsDrops as $appsItem) {
+                $ddLabel = $e((string) ($appsItem['label'] ?? ''));
+                echo '<div class="header-dropdown">';
+                echo '<button type="button" class="header-dropdown-trigger"'
+                   . ' aria-haspopup="menu" aria-expanded="false">'
+                   . $ddLabel . $ddChevron . '</button>';
+                echo '<div class="header-dropdown-panel">';
+                foreach ((array) $appsItem['children'] as $child) {
+                    echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '">'
+                       . $e((string) ($child['label'] ?? '')) . '</a>';
+                }
+                echo '</div></div>';
+            }
             echo '</nav>';
+        }
+
+        if ($loggedIn && (!empty($appMenu) || !empty($appsMenu))) {
+            echo '<span class="header-nav-sep" aria-hidden="true"></span>';
         }
 
         if ($loggedIn) {

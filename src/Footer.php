@@ -52,6 +52,15 @@ final class Footer
         echo '<span>&copy; ' . $h($year) . ' ' . $h($owner) . '</span>';
         echo '<span>' . $h((string) $version) . '</span>';
         echo '</footer>';
+
+        // Shared form enhancement (password-reveal eye + clear-×) on every page.
+        // Needs the CSP nonce — falls back to the global $_cspNonce set by
+        // erikr/auth bootstrap() in every app (no per-app call-site change needed).
+        $nonce = (string) ($a['cspNonce'] ?? ($GLOBALS['_cspNonce'] ?? ''));
+        if ($nonce !== '') {
+            echo '<script src="' . $h($base) . '/css/shared/js/field-enhance.js" nonce="'
+               . $h($nonce) . '"></script>';
+        }
     }
 
     /**

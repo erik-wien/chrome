@@ -55,14 +55,14 @@ final class UsersTab
             : '<span class="ui-icon ui-icon-check is-success" aria-label="aktiv" title="aktiv"></span>';
 
         ?>
-        <div class="card">
-            <div class="card-header card-header-split">
+        <div class="app-card">
+            <div class="app-card-header app-card-header-split">
                 <span>Benutzerverwaltung (<?= $h($total) ?>)</span>
-                <button type="button" class="btn btn-outline-success btn-sm" data-modal-open="createModal">
+                <button type="button" class="btn btn-outline-danger btn-sm" data-modal-open="createModal">
                     + Benutzer anlegen
                 </button>
             </div>
-            <div class="card-body">
+            <div class="app-card-body">
 
                 <form method="get" action="admin.php" class="user-filter-form"
                       style="display:flex; gap:.5rem; margin-bottom:1rem">

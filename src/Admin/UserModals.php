@@ -29,15 +29,17 @@ final class UserModals
         $h           = static fn($v) => htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
         ?>
         <!-- Create Modal -->
-        <div class="modal" id="createModal" aria-hidden="true">
-            <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="createModalTitle" tabindex="-1">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="createModalTitle">Benutzer anlegen</h5>
-                    <button type="button" class="btn-close" data-modal-close aria-label="Schließen">&times;</button>
+        <div class="app-modal-backdrop" id="createModal" aria-hidden="true" hidden>
+            <div class="app-modal-dialog app-modal-sm" role="dialog" aria-modal="true" aria-labelledby="createModalTitle" tabindex="-1">
+                <div class="app-modal-header">
+                    <div class="app-modal-header-row">
+                        <h2 class="app-modal-title" id="createModalTitle">Benutzer anlegen</h2>
+                        <button type="button" class="app-modal-close btn icon-btn" data-modal-close aria-label="Schließen"><span aria-hidden="true">&times;</span></button>
+                    </div>
                 </div>
                 <form id="createForm">
-                    <div class="modal-body">
-                        <div id="createAlerts" class="modal-alerts"></div>
+                    <div class="app-modal-body">
+                        <div id="createAlerts" class="app-modal-alerts"></div>
                         <input type="hidden" name="csrf_token" value="<?= $h($csrf) ?>">
                         <div class="form-group">
                             <label for="createUsername">Benutzername</label>
@@ -58,24 +60,26 @@ final class UserModals
                             self::renderField($f, 'create', null, $h);
                         endforeach; ?>
                     </div>
-                    <div class="modal-footer">
+                    <div class="app-modal-footer">
                         <button type="button" class="btn" data-modal-close>Abbrechen</button>
-                        <button type="submit" class="btn btn-outline-success">Anlegen &amp; einladen</button>
+                        <button type="submit" class="btn btn-outline-danger">Anlegen &amp; einladen</button>
                     </div>
                 </form>
             </div>
         </div>
 
         <!-- Edit Modal -->
-        <div class="modal" id="editModal" aria-hidden="true">
-            <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" tabindex="-1">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editModalTitle">Benutzer bearbeiten: <span id="editUsername"></span></h5>
-                    <button type="button" class="btn-close" data-modal-close aria-label="Schließen">&times;</button>
+        <div class="app-modal-backdrop" id="editModal" aria-hidden="true" hidden>
+            <div class="app-modal-dialog app-modal-sm" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" tabindex="-1">
+                <div class="app-modal-header">
+                    <div class="app-modal-header-row">
+                        <h2 class="app-modal-title" id="editModalTitle">Benutzer bearbeiten: <span id="editUsername"></span></h2>
+                        <button type="button" class="app-modal-close btn icon-btn" data-modal-close aria-label="Schließen"><span aria-hidden="true">&times;</span></button>
+                    </div>
                 </div>
                 <form id="editForm">
-                    <div class="modal-body">
-                        <div id="editAlerts" class="modal-alerts"></div>
+                    <div class="app-modal-body">
+                        <div id="editAlerts" class="app-modal-alerts"></div>
                         <input type="hidden" name="csrf_token" value="<?= $h($csrf) ?>">
                         <input type="hidden" name="id" id="editId">
                         <div class="form-group">
@@ -97,9 +101,9 @@ final class UserModals
                             self::renderField($f, 'edit', null, $h);
                         endforeach; ?>
                     </div>
-                    <div class="modal-footer">
+                    <div class="app-modal-footer">
                         <button type="button" class="btn" data-modal-close>Abbrechen</button>
-                        <button type="submit" class="btn btn-outline-success">Speichern</button>
+                        <button type="submit" class="btn btn-outline-danger">Speichern</button>
                     </div>
                 </form>
             </div>
@@ -115,16 +119,18 @@ final class UserModals
     public static function renderResetPasswordModal(): void
     {
         ?>
-        <div class="modal" id="resetPasswordModal" aria-hidden="true">
-            <div class="modal-dialog" role="dialog" aria-modal="true"
+        <div class="app-modal-backdrop" id="resetPasswordModal" aria-hidden="true" hidden>
+            <div class="app-modal-dialog app-modal-sm" role="dialog" aria-modal="true"
                  aria-labelledby="resetPasswordModalTitle" tabindex="-1">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="resetPasswordModalTitle">Passwort-Reset bestätigen</h5>
-                    <button type="button" class="btn-close" data-modal-close
-                            aria-label="Schließen">&times;</button>
+                <div class="app-modal-header">
+                    <div class="app-modal-header-row">
+                        <h2 class="app-modal-title" id="resetPasswordModalTitle">Passwort-Reset bestätigen</h2>
+                        <button type="button" class="app-modal-close btn icon-btn" data-modal-close
+                                aria-label="Schließen"><span aria-hidden="true">&times;</span></button>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <div id="resetPasswordAlerts" class="modal-alerts"></div>
+                <div class="app-modal-body">
+                    <div id="resetPasswordAlerts" class="app-modal-alerts"></div>
                     <p>Benutzer: <strong id="resetPwUsername"></strong>
                        (<span id="resetPwEmail"></span>)</p>
                     <p>Hiermit wird:</p>
@@ -135,10 +141,10 @@ final class UserModals
                             <span id="resetPwIps" class="text-muted">—</span></li>
                     </ol>
                 </div>
-                <div class="modal-footer">
+                <div class="app-modal-footer">
                     <input type="hidden" id="resetPwId" value="">
                     <button type="button" class="btn" data-modal-close>Abbrechen</button>
-                    <button type="button" class="btn btn-outline-success"
+                    <button type="button" class="btn btn-outline-danger"
                             id="resetPwConfirm">Bestätigen</button>
                 </div>
             </div>

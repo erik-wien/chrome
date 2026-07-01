@@ -18,11 +18,11 @@ final class LogTab
     {
         $h = static fn($v) => htmlspecialchars((string) ($v ?? ''), ENT_QUOTES, 'UTF-8');
         ?>
-        <div class="card">
-            <div class="card-header card-header-split">
+        <div class="app-card">
+            <div class="app-card-header app-card-header-split">
                 <span>Log (<span id="logTotal">…</span> Einträge)</span>
             </div>
-            <div class="card-body">
+            <div class="app-card-body">
 
                 <form id="logFilterForm" class="log-filter-form"
                       style="display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; align-items:end">
