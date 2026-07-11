@@ -285,11 +285,11 @@ final class Header
             }
             echo '<div class="dropdown-divider"></div>';
             echo '<div class="theme-row">';
-            foreach (['light' => '☀', 'auto' => '⬤', 'dark' => '🌙'] as $val => $icon) {
+            foreach (['light' => 'sun', 'auto' => 'monitor', 'dark' => 'moon'] as $val => $icon) {
                 $active = ($theme === $val) ? ' active' : '';
                 echo '<button class="theme-btn' . $active . '" data-theme="' . $val . '" '
                    . 'title="' . ($val === 'light' ? 'Hell' : ($val === 'dark' ? 'Dunkel' : 'Auto')) . '">'
-                   . $icon . '</button>';
+                   . '<span class="ui-icon ui-icon-' . $icon . '" aria-hidden="true"></span></button>';
             }
             echo '</div>';
             echo '<div class="dropdown-divider"></div>';
