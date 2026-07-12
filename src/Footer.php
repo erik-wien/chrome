@@ -22,7 +22,7 @@ namespace Erikr\Chrome;
  *   Footer::render([
  *       'base'          => $base,
  *       'impressumHref' => $base . '/impressum.php',
- *       'owner'         => 'Erik R. Huemer',
+ *       'owner'         => 'Erik R. Accart-Huemer',
  *       'version'       => '1.2.3 PROD',
  *   ]);
  */
@@ -31,7 +31,7 @@ final class Footer
     public static function render(array $a = []): void
     {
         $base  = rtrim((string) ($a['base'] ?? ''), '/');
-        $owner = (string) ($a['owner'] ?? 'Erik R. Huemer');
+        $owner = (string) ($a['owner'] ?? 'Erik R. Accart-Huemer');
 
         $impressumHref = $a['impressumHref'] ?? ($base . '/impressum.php');
 
@@ -39,7 +39,7 @@ final class Footer
         if ($version === null) {
             $v = defined('APP_VERSION') ? (string) APP_VERSION : '0.0';
             $b = defined('APP_BUILD')   ? (string) APP_BUILD   : '0';
-            $stage = (string) ($a['stage'] ?? self::deriveStage());
+            $stage = (string) ($a['stage'] ?? self::deriveStage($a['devTargets'] ?? null));
             $version = trim($v . '.' . $b . ($stage !== '' ? ' ' . $stage : ''));
         }
 
@@ -64,16 +64,22 @@ final class Footer
     }
 
     /**
-     * Derive STAGE from APP_ENV per Rule §13: local dev targets → DEV, everything
-     * else (production deploy targets like akadbrain, world4you) → PROD.
+     * Derive STAGE from APP_ENV per Rule §13: dev/test targets → DEV, real
+     * production deploy targets (world4you) → PROD.
+     *
+     * `akadbrain` is a DEV2 test tier (*.eriks.cloud) and counts as DEV. Apps
+     * may override the whole list via the `devTargets` render option; when
+     * omitted the library default below applies.
+     *
+     * @param list<string>|null $devTargets Override for the DEV target list.
      */
-    private static function deriveStage(): string
+    private static function deriveStage(?array $devTargets = null): string
     {
         if (!defined('APP_ENV')) {
             return '';
         }
         $env = strtolower((string) APP_ENV);
-        $devTargets = ['local', 'localhost', 'dev', 'development', 'staging'];
+        $devTargets ??= ['local', 'localhost', 'dev', 'development', 'staging', 'akadbrain'];
         return in_array($env, $devTargets, true) ? 'DEV' : 'PROD';
     }
 }
