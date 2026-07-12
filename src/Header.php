@@ -68,6 +68,7 @@ final class Header
         $logoutHref    = $a['logoutHref']    ?? ($base . '/logout.php');
         $themeEndpoint = $a['themeEndpoint'] ?? ($base . '/preferences.php');
         $anonLoginHref = array_key_exists('anonLoginHref', $a) ? $a['anonLoginHref'] : ($base . '/login.php');
+        $anonThemeToggle = (bool) ($a['anonThemeToggle'] ?? false);
 
         // Grouped user dropdown params (new — null = use legacy flat mode)
         $profileHref   = $a['profileHref']  ?? null;
@@ -284,14 +285,7 @@ final class Header
                 foreach ($extras as $snippet) { echo (string) $snippet; }
             }
             echo '<div class="dropdown-divider"></div>';
-            echo '<div class="theme-row">';
-            foreach (['light' => 'sun', 'auto' => 'sun-moon', 'dark' => 'moon'] as $val => $icon) {
-                $active = ($theme === $val) ? ' active' : '';
-                echo '<button class="theme-btn' . $active . '" data-theme="' . $val . '" '
-                   . 'title="' . ($val === 'light' ? 'Hell' : ($val === 'dark' ? 'Dunkel' : 'Auto')) . '">'
-                   . '<span class="ui-icon ui-icon-' . $icon . '" aria-hidden="true"></span></button>';
-            }
-            echo '</div>';
+            echo self::renderThemePill($theme);
             echo '<div class="dropdown-divider"></div>';
             if ($helpHref !== null) {
                 echo '<a href="' . $e((string) $helpHref) . '" class="dropdown-link-btn">Hilfe</a>';
@@ -336,9 +330,14 @@ final class Header
 
             echo '</div>'; // .user-dropdown
             echo '</div>'; // .user-menu
-        } elseif ($anonLoginHref !== null) {
-            echo '<a href="' . $e((string) $anonLoginHref) . '" class="user-btn" '
-               . 'style="text-decoration:none">Anmelden</a>';
+        } else {
+            if ($anonThemeToggle) {
+                echo self::renderThemePill($theme);
+            }
+            if ($anonLoginHref !== null) {
+                echo '<a href="' . $e((string) $anonLoginHref) . '" class="user-btn" '
+                   . 'style="text-decoration:none">Anmelden</a>';
+            }
         }
 
         echo '</div>'; // .header-right
@@ -447,6 +446,40 @@ final class Header
             echo '});});';
             echo '})();';
             echo '</script>';
+        } elseif ($anonThemeToggle) {
+            // Anon variant: cookie-only, no session/CSRF/fetch (mirrors the
+            // logged-in switcher's cookie logic, without the POST to themeEndpoint).
+            echo '<script' . $nonceAttr . '>';
+            echo '(function(){';
+            echo 'var pill=document.querySelector(".header-right .theme-row");if(!pill)return;';
+            echo 'pill.querySelectorAll(".theme-btn").forEach(function(btn){';
+            echo 'btn.addEventListener("click",function(e){e.stopPropagation();';
+            echo 'var t=btn.dataset.theme;';
+            echo 'if(t==="auto"){delete document.documentElement.dataset.theme;}';
+            echo 'else{document.documentElement.dataset.theme=t;}';
+            echo 'pill.querySelectorAll(".theme-btn").forEach(function(b){'
+               . 'b.classList.toggle("active",b.dataset.theme===t);});';
+            echo 'document.cookie="theme="+t+";path=/;max-age="+(365*86400)+";samesite=Lax";';
+            echo '});});';
+            echo '})();';
+            echo '</script>';
         }
+    }
+
+    /**
+     * Theme-pill markup (.theme-row + three .theme-btn buttons) shared by the
+     * logged-in user dropdown and the anon header-right slot (anonThemeToggle).
+     */
+    private static function renderThemePill(string $theme): string
+    {
+        $html = '<div class="theme-row">';
+        foreach (['light' => 'sun', 'auto' => 'sun-moon', 'dark' => 'moon'] as $val => $icon) {
+            $active = ($theme === $val) ? ' active' : '';
+            $html .= '<button class="theme-btn' . $active . '" data-theme="' . $val . '" '
+               . 'title="' . ($val === 'light' ? 'Hell' : ($val === 'dark' ? 'Dunkel' : 'Auto')) . '">'
+               . '<span class="ui-icon ui-icon-' . $icon . '" aria-hidden="true"></span></button>';
+        }
+        $html .= '</div>';
+        return $html;
     }
 }
