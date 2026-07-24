@@ -57,6 +57,21 @@ final class Header
         $theme    = (string) ($a['theme'] ?? ($_SESSION['theme'] ?? 'auto'));
         if (!in_array($theme, ['light', 'dark', 'auto'], true)) { $theme = 'auto'; }
 
+        // Cross-app links — plain items always collapse into a single "Apps"
+        // dropdown (TASK-5); items that already carry children (legacy, rare)
+        // get their own separate dropdown trigger. Computed once, reused by
+        // the desktop nav and its mobile drill-down mirror below.
+        $appsPlain = [];
+        $appsDrops = [];
+        foreach ($appsMenu as $appsItem) {
+            if (!empty($appsItem['adminOnly']) && !$isAdmin) continue;
+            if (isset($appsItem['children'])) {
+                $appsDrops[] = $appsItem;
+            } else {
+                $appsPlain[] = $appsItem;
+            }
+        }
+
         // URL defaults — every app can override, but defaults follow the §12 layout
         $brandHref     = $a['brandHref']     ?? ($base . '/');
         $brandLogoSrc  = $a['brandLogoSrc']  ?? ($base . '/assets/jardyx.svg');
@@ -148,33 +163,19 @@ final class Header
             if (!empty($appMenu) && !empty($appsMenu)) {
                 echo '<span class="header-nav-sep" aria-hidden="true"></span>';
             }
-            // Split appsMenu into plain links vs. items that already have children (e.g. Test)
-            $appsPlain = [];
-            $appsDrops = [];
-            foreach ($appsMenu as $appsItem) {
-                if (!empty($appsItem['adminOnly']) && !$isAdmin) continue;
-                if (isset($appsItem['children'])) {
-                    $appsDrops[] = $appsItem;
-                } else {
-                    $appsPlain[] = $appsItem;
-                }
-            }
-            // When appMenu items are present, collapse plain cross-app links into one "Links" dropdown
-            if (!empty($appMenu) && !empty($appsPlain)) {
+            // Cross-app links always collapse into a single "Apps" dropdown (TASK-5,
+            // Suite-Policy §1) — regardless of whether appMenu is present. Items that
+            // already carry children (legacy, rare) get their own separate trigger.
+            if (!empty($appsPlain)) {
                 echo '<div class="header-dropdown">';
                 echo '<button type="button" class="header-dropdown-trigger"'
-                   . ' aria-haspopup="menu" aria-expanded="false">Links' . $ddChevron . '</button>';
+                   . ' aria-haspopup="menu" aria-expanded="false">Apps' . $ddChevron . '</button>';
                 echo '<div class="header-dropdown-panel">';
                 foreach ($appsPlain as $appsItem) {
                     echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '">'
                        . $e((string) ($appsItem['label'] ?? '')) . '</a>';
                 }
                 echo '</div></div>';
-            } else {
-                foreach ($appsPlain as $appsItem) {
-                    echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '">'
-                       . $e((string) ($appsItem['label'] ?? '')) . '</a>';
-                }
             }
             foreach ($appsDrops as $appsItem) {
                 $ddLabel = $e((string) ($appsItem['label'] ?? ''));
@@ -240,17 +241,17 @@ final class Header
                            . $e((string) ($item['label'] ?? '')) . $chevR . '</button>';
                     }
                 }
-                foreach ($appsMenu as $appsItem) {
-                    if (!empty($appsItem['adminOnly']) && !$isAdmin) continue;
-                    if (isset($appsItem['children'])) {
-                        $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($appsItem['label'] ?? '')));
-                        echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
-                           . ' data-target="' . $e($subId) . '">'
-                           . $e((string) ($appsItem['label'] ?? '')) . $chevR . '</button>';
-                    } else {
-                        echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '" class="dropdown-link-btn">'
-                           . $e((string) ($appsItem['label'] ?? '')) . '</a>';
-                    }
+                // Cross-app links mirror the menu-bar "Apps" dropdown as a drill-down
+                // (same .dd-sub mechanic as appMenu children — TASK-5).
+                if (!empty($appsPlain)) {
+                    echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
+                       . ' data-target="dd-sub-apps">Apps' . $chevR . '</button>';
+                }
+                foreach ($appsDrops as $appsItem) {
+                    $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($appsItem['label'] ?? '')));
+                    echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
+                       . ' data-target="' . $e($subId) . '">'
+                       . $e((string) ($appsItem['label'] ?? '')) . $chevR . '</button>';
                 }
                 echo '</div>';
                 echo '<div class="dropdown-divider"></div>';
@@ -310,6 +311,16 @@ final class Header
                 foreach ((array) $item['children'] as $child) {
                     echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '" class="dropdown-link-btn">'
                        . $e((string) ($child['label'] ?? '')) . '</a>';
+                }
+                echo '</div>';
+            }
+            // Apps drill-down (mirrors the menu-bar "Apps" dropdown of plain cross-app links)
+            if (!empty($appsPlain)) {
+                echo '<div class="dd-sub" id="dd-sub-apps">';
+                echo '<button type="button" class="dd-back dropdown-link-btn">' . $chevL . ' Apps</button>';
+                foreach ($appsPlain as $appsItem) {
+                    echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '" class="dropdown-link-btn">'
+                       . $e((string) ($appsItem['label'] ?? '')) . '</a>';
                 }
                 echo '</div>';
             }
@@ -385,12 +396,11 @@ final class Header
         }
 
         // ── Behaviour script: header nav dropdown ───────────────────────
-        $hasNavDropdown = false;
-        foreach ($appMenu as $item) {
-            if (isset($item['children'])) { $hasNavDropdown = true; break; }
-        }
+        // The "Apps" cross-app dropdown is always rendered as .header-dropdown
+        // when present (TASK-5), no need to scan appsMenu items for it.
+        $hasNavDropdown = !empty($appsPlain) || !empty($appsDrops);
         if (!$hasNavDropdown) {
-            foreach ($appsMenu as $item) {
+            foreach ($appMenu as $item) {
                 if (isset($item['children'])) { $hasNavDropdown = true; break; }
             }
         }
