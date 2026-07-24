@@ -15,9 +15,9 @@ namespace Erikr\Chrome;
  * Header::render() `appsMenu` option.
  *
  * The prod hosts are all *.jardyx.com (the confirmed SSO-return targets, audit
- * S2). The self app is excluded from both the prod list and the Test submenu.
- * When the env is 'local', an admin-only "Test" dropdown of http://<key>.test
- * links is appended.
+ * S2). The self app is excluded from the prod list. Suite-Policy §1 forbids
+ * dev/test links in the Apps menu (TASK-6) — the menu only ever carries the
+ * jardyx.com production links, in any env.
  */
 final class AppsMenu
 {
@@ -42,8 +42,9 @@ final class AppsMenu
      * Build the `appsMenu` array for Header::render().
      *
      * @param string      $currentKey Registry key of the current app (excluded from the menu).
-     * @param string|null $env        Deployment env; null → APP_ENV constant if defined, else ''.
-     *                                Value 'local' appends the admin-only Test submenu.
+     * @param string|null $env        Deprecated (TASK-6) — no longer used; the Test submenu it
+     *                                used to gate on 'local' was removed per Suite-Policy §1.
+     *                                Kept for call-site compatibility (AppsMenu::build(key, APP_ENV)).
      * @return list<array<string, mixed>> Header-compatible menu entries.
      */
     public static function build(string $currentKey, ?string $env = null): array
@@ -52,25 +53,12 @@ final class AppsMenu
             throw new \InvalidArgumentException("AppsMenu: unknown app key '{$currentKey}'");
         }
 
-        $env ??= defined('APP_ENV') ? (string) constant('APP_ENV') : '';
-
         $menu = [];
         foreach (self::APPS as $key => $app) {
             if ($key === $currentKey) {
                 continue;
             }
             $menu[] = ['href' => $app['prod'], 'label' => $app['label']];
-        }
-
-        if ($env === 'local') {
-            $children = [];
-            foreach (self::APPS as $key => $app) {
-                if ($key === $currentKey) {
-                    continue;
-                }
-                $children[] = ['href' => $app['test'], 'label' => $app['label']];
-            }
-            $menu[] = ['label' => 'Test', 'adminOnly' => true, 'children' => $children];
         }
 
         return $menu;
