@@ -42,6 +42,7 @@ final class Header
         $pageType = (string) ($a['pageType']  ?? '');
         $appMenu    = (array)  ($a['appMenu']   ?? []);
         $appsMenu   = (array)  ($a['appsMenu']  ?? []);
+        $adminItems = (array)  ($a['adminItems'] ?? []);
         $extras     = (array)  ($a['extraItems'] ?? []);
         $leftExtra  = (string) ($a['leftExtra']  ?? '');
         $spritePath = $a['spritePath'] ?? null;
@@ -79,11 +80,28 @@ final class Header
         $prefsHref     = $a['prefsHref']     ?? ($base . '/preferences.php');
         $securityHref  = $a['securityHref']  ?? ($base . '/password.php');
         $adminHref     = $a['adminHref']     ?? ($base . '/admin.php');
+        $statusHref    = array_key_exists('statusHref', $a) ? $a['statusHref'] : ($base . '/status.php');
         $helpHref      = array_key_exists('helpHref', $a) ? $a['helpHref'] : ($base . '/help.php');
         $logoutHref    = $a['logoutHref']    ?? ($base . '/logout.php');
         $themeEndpoint = $a['themeEndpoint'] ?? ($base . '/preferences.php');
         $anonLoginHref = array_key_exists('anonLoginHref', $a) ? $a['anonLoginHref'] : ($base . '/login.php');
         $anonThemeToggle = (bool) ($a['anonThemeToggle'] ?? false);
+
+        // Administration dropdown (menu bar) — "Verwaltung" (adminHref) is the
+        // first child, shown only for admins; adminItems follow 1:1 (apps
+        // already role-filter these before passing them in). Visible when
+        // isAdmin OR adminItems is non-empty.
+        $adminChildren = [];
+        if ($isAdmin) {
+            $adminChildren[] = ['href' => $adminHref, 'label' => 'Verwaltung'];
+        }
+        foreach ($adminItems as $adminItem) {
+            $adminChildren[] = [
+                'href'  => (string) ($adminItem['href']  ?? '#'),
+                'label' => (string) ($adminItem['label'] ?? ''),
+            ];
+        }
+        $showAdminDropdown = !empty($adminChildren);
 
         // Grouped user dropdown params (new — null = use legacy flat mode)
         $profileHref   = $a['profileHref']  ?? null;
@@ -133,7 +151,7 @@ final class Header
         $ddChevron = '<svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"'
                    . ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">'
                    . '<path d="M1 3l4 4 4-4"/></svg>';
-        if (!empty($appMenu) || !empty($appsMenu)) {
+        if (!empty($appMenu) || !empty($appsMenu) || $showAdminDropdown) {
             echo '<nav class="header-nav">';
             foreach ($appMenu as $item) {
                 if (isset($item['children'])) {
@@ -160,7 +178,20 @@ final class Header
                     echo '<a href="' . $e($href) . '"' . $activeAttr . '>' . $e($label) . '</a>';
                 }
             }
-            if (!empty($appMenu) && !empty($appsMenu)) {
+            if ($showAdminDropdown) {
+                if (!empty($appMenu)) {
+                    echo '<span class="header-nav-sep" aria-hidden="true"></span>';
+                }
+                echo '<div class="header-dropdown">';
+                echo '<button type="button" class="header-dropdown-trigger"'
+                   . ' aria-haspopup="menu" aria-expanded="false">Administration' . $ddChevron . '</button>';
+                echo '<div class="header-dropdown-panel">';
+                foreach ($adminChildren as $child) {
+                    echo '<a href="' . $e((string) $child['href']) . '">' . $e((string) $child['label']) . '</a>';
+                }
+                echo '</div></div>';
+            }
+            if ((!empty($appMenu) || $showAdminDropdown) && !empty($appsMenu)) {
                 echo '<span class="header-nav-sep" aria-hidden="true"></span>';
             }
             // Cross-app links always collapse into a single "Apps" dropdown (TASK-5,
@@ -193,7 +224,7 @@ final class Header
             echo '</nav>';
         }
 
-        if ($loggedIn && (!empty($appMenu) || !empty($appsMenu))) {
+        if ($loggedIn && (!empty($appMenu) || !empty($appsMenu) || $showAdminDropdown)) {
             echo '<span class="header-nav-sep" aria-hidden="true"></span>';
         }
 
@@ -223,7 +254,7 @@ final class Header
             echo '<div class="dd-main">';
 
             // ── Nav section (mobile only — CSS hides at ≥768 px) ───────────
-            if (!empty($appMenu) || !empty($appsMenu)) {
+            if (!empty($appMenu) || !empty($appsMenu) || $showAdminDropdown) {
                 echo '<div class="dropdown-nav-section">';
                 echo '<span class="dropdown-section-label">Apps</span>';
                 foreach ($appMenu as $item) {
@@ -241,8 +272,13 @@ final class Header
                            . $e((string) ($item['label'] ?? '')) . $chevR . '</button>';
                     }
                 }
-                // Cross-app links mirror the menu-bar "Apps" dropdown as a drill-down
-                // (same .dd-sub mechanic as appMenu children — TASK-5).
+                // Administration + cross-app "Apps" links mirror the menu-bar
+                // dropdowns as drill-downs (same .dd-sub mechanic as appMenu
+                // children — TASK-5/TASK-7 §mobile).
+                if ($showAdminDropdown) {
+                    echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
+                       . ' data-target="dd-sub-administration">Administration' . $chevR . '</button>';
+                }
                 if (!empty($appsPlain)) {
                     echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
                        . ' data-target="dd-sub-apps">Apps' . $chevR . '</button>';
@@ -279,8 +315,8 @@ final class Header
                 echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
                 echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
             }
-            if ($isAdmin) {
-                echo '<a href="' . $e((string) $adminHref) . '" class="dropdown-link-btn">Administration</a>';
+            if ($statusHref !== null) {
+                echo '<a href="' . $e((string) $statusHref) . '" class="dropdown-link-btn">Status</a>';
             }
             if (!empty($extras)) {
                 foreach ($extras as $snippet) { echo (string) $snippet; }
@@ -311,6 +347,16 @@ final class Header
                 foreach ((array) $item['children'] as $child) {
                     echo '<a href="' . $e((string) ($child['href'] ?? '#')) . '" class="dropdown-link-btn">'
                        . $e((string) ($child['label'] ?? '')) . '</a>';
+                }
+                echo '</div>';
+            }
+            // Administration drill-down (mirrors the menu-bar dropdown)
+            if ($showAdminDropdown) {
+                echo '<div class="dd-sub" id="dd-sub-administration">';
+                echo '<button type="button" class="dd-back dropdown-link-btn">' . $chevL . ' Administration</button>';
+                foreach ($adminChildren as $child) {
+                    echo '<a href="' . $e((string) $child['href']) . '" class="dropdown-link-btn">'
+                       . $e((string) $child['label']) . '</a>';
                 }
                 echo '</div>';
             }
@@ -396,9 +442,10 @@ final class Header
         }
 
         // ── Behaviour script: header nav dropdown ───────────────────────
-        // The "Apps" cross-app dropdown is always rendered as .header-dropdown
-        // when present (TASK-5), no need to scan appsMenu items for it.
-        $hasNavDropdown = !empty($appsPlain) || !empty($appsDrops);
+        // Administration and the "Apps" cross-app dropdown are always rendered
+        // as .header-dropdown when present (TASK-5/TASK-7), no need to scan
+        // appMenu/appsMenu items for them.
+        $hasNavDropdown = $showAdminDropdown || !empty($appsPlain) || !empty($appsDrops);
         if (!$hasNavDropdown) {
             foreach ($appMenu as $item) {
                 if (isset($item['children'])) { $hasNavDropdown = true; break; }
