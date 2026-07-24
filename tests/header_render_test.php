@@ -160,16 +160,36 @@ $navSection7end = $navSection7pos !== false ? strpos($html7, '<div class="dropdo
 $navSection7 = ($navSection7pos !== false && $navSection7end !== false)
     ? substr($html7, $navSection7pos, $navSection7end - $navSection7pos)
     : '';
-assertContains('data-target="dd-sub-administration"', $navSection7, '7: Administration-Drilldown-Trigger in dropdown-nav-section');
-assertContains('data-target="dd-sub-apps"', $navSection7, '7: Apps-Drilldown-Trigger in dropdown-nav-section');
-assertContains('<div class="dd-sub" id="dd-sub-administration">', $html7, '7: dd-sub-Panel für Administration vorhanden');
-assertContains('<div class="dd-sub" id="dd-sub-apps">', $html7, '7: dd-sub-Panel für Apps vorhanden');
+assertContains('data-target="dd-sub-core-administration"', $navSection7, '7: Administration-Drilldown-Trigger in dropdown-nav-section');
+assertContains('data-target="dd-sub-core-apps"', $navSection7, '7: Apps-Drilldown-Trigger in dropdown-nav-section');
+assertContains('<div class="dd-sub" id="dd-sub-core-administration">', $html7, '7: dd-sub-Panel für Administration vorhanden');
+assertContains('<div class="dd-sub" id="dd-sub-core-apps">', $html7, '7: dd-sub-Panel für Apps vorhanden');
 
 // ── 8. AppsMenu::build('energie','local') → keine .test-URLs ─────────────
 $appsMenuBuilt = AppsMenu::build('energie', 'local');
 $appsMenuBuiltJson = json_encode($appsMenuBuilt);
 assertNotContains('.test', (string) $appsMenuBuiltJson, '8: AppsMenu::build enthält keine .test-URLs (auch nicht im local-Env)');
 check(count($appsMenuBuilt) === 6, '8: AppsMenu::build liefert die 6 übrigen Suite-Apps (ohne self)');
+
+// ── 9. appsMenu => [] ohne appMenu → kein leeres "Apps"-Dropdown, kein <nav> ──
+$html9 = renderHeader([
+    'appMenu'  => [],
+    'appsMenu' => [],
+]);
+assertNotContains('<nav class="header-nav">', $html9, '9: kein <nav> im Output, wenn appMenu und appsMenu beide leer sind');
+assertNotContains('>Apps<svg', $html9, '9: kein leerer "Apps"-Dropdown-Trigger');
+
+// ── 10. appMenu-Item mit Label "Apps" (children) + appsMenu → keine doppelte
+//        dd-sub-ID (Regressionstest für den Slug-Kollisions-Bug, Review-Befund 1) ──
+$html10 = renderHeader([
+    'loggedIn' => true,
+    'appMenu'  => [['label' => 'Apps', 'children' => [['href' => '/x', 'label' => 'X']]]],
+    'appsMenu' => $appsMenuJardyx,
+]);
+check(substr_count($html10, 'id="dd-sub-core-apps"') === 1, '10: System-Panel "dd-sub-core-apps" (Cross-App-Links) genau einmal im Output');
+check(substr_count($html10, 'id="dd-sub-apps"') === 1, '10: Label-generiertes Panel "dd-sub-apps" (appMenu-Item "Apps") genau einmal im Output');
+assertContains('data-target="dd-sub-core-apps"', $html10, '10: Drilldown-Trigger für Cross-App-Links zeigt auf das System-Panel');
+assertContains('data-target="dd-sub-apps"', $html10, '10: Drilldown-Trigger für das appMenu-Item "Apps" zeigt auf das Label-Panel');
 
 // ── Summary ────────────────────────────────────────────────────────────
 echo "\n";

@@ -23,6 +23,11 @@ namespace Erikr\Chrome;
  *               ['href' => 'http://app.test', 'label' => 'App'],
  *           ]],
  *       ],
+ *       'adminItems'  => [     // rendered in the "Administration" dropdown,
+ *                              // after "Verwaltung" (admin.php) when isAdmin
+ *           ['href' => 'admin_users.php', 'label' => 'Benutzer'],
+ *       ],
+ *       'statusHref'  => $base . '/status.php', // null suppresses the "Status" link
  *       'extraItems'  => [],   // raw HTML snippets rendered before theme row
  *       'leftExtra'   => '',   // raw HTML snippet rendered inside .header-left
  *                              // after the brand (e.g. a search box)
@@ -191,7 +196,7 @@ final class Header
                 }
                 echo '</div></div>';
             }
-            if ((!empty($appMenu) || $showAdminDropdown) && !empty($appsMenu)) {
+            if ((!empty($appMenu) || $showAdminDropdown) && (!empty($appsPlain) || !empty($appsDrops))) {
                 echo '<span class="header-nav-sep" aria-hidden="true"></span>';
             }
             // Cross-app links always collapse into a single "Apps" dropdown (TASK-5,
@@ -224,7 +229,7 @@ final class Header
             echo '</nav>';
         }
 
-        if ($loggedIn && (!empty($appMenu) || !empty($appsMenu) || $showAdminDropdown)) {
+        if ($loggedIn && (!empty($appMenu) || !empty($appsPlain) || !empty($appsDrops) || $showAdminDropdown)) {
             echo '<span class="header-nav-sep" aria-hidden="true"></span>';
         }
 
@@ -277,11 +282,11 @@ final class Header
                 // children — TASK-5/TASK-7 §mobile).
                 if ($showAdminDropdown) {
                     echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
-                       . ' data-target="dd-sub-administration">Administration' . $chevR . '</button>';
+                       . ' data-target="dd-sub-core-administration">Administration' . $chevR . '</button>';
                 }
                 if (!empty($appsPlain)) {
                     echo '<button type="button" class="dd-trigger dd-chevron-btn dropdown-link-btn"'
-                       . ' data-target="dd-sub-apps">Apps' . $chevR . '</button>';
+                       . ' data-target="dd-sub-core-apps">Apps' . $chevR . '</button>';
                 }
                 foreach ($appsDrops as $appsItem) {
                     $subId = 'dd-sub-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($appsItem['label'] ?? '')));
@@ -352,7 +357,7 @@ final class Header
             }
             // Administration drill-down (mirrors the menu-bar dropdown)
             if ($showAdminDropdown) {
-                echo '<div class="dd-sub" id="dd-sub-administration">';
+                echo '<div class="dd-sub" id="dd-sub-core-administration">';
                 echo '<button type="button" class="dd-back dropdown-link-btn">' . $chevL . ' Administration</button>';
                 foreach ($adminChildren as $child) {
                     echo '<a href="' . $e((string) $child['href']) . '" class="dropdown-link-btn">'
@@ -362,7 +367,7 @@ final class Header
             }
             // Apps drill-down (mirrors the menu-bar "Apps" dropdown of plain cross-app links)
             if (!empty($appsPlain)) {
-                echo '<div class="dd-sub" id="dd-sub-apps">';
+                echo '<div class="dd-sub" id="dd-sub-core-apps">';
                 echo '<button type="button" class="dd-back dropdown-link-btn">' . $chevL . ' Apps</button>';
                 foreach ($appsPlain as $appsItem) {
                     echo '<a href="' . $e((string) ($appsItem['href'] ?? '#')) . '" class="dropdown-link-btn">'
