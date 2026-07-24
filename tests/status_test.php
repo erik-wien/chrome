@@ -113,6 +113,31 @@ file_put_contents($cacheFile3c, json_encode([
 Status::run($checks3c, ['cacheFile' => $cacheFile3c, 'cacheTtl' => 60]);
 check($calls3c === 1, '3c: altes generated_ts im Cache-Inhalt (trotz frischer mtime) -> Check läuft erneut');
 
+// ── 3d. Strukturell gültiges JSON ohne generated_ts-Key -> Cache gilt nicht, Check läuft erneut ──
+$cacheFile3d = $tmpDir . '/cache_missing_ts.json';
+$calls3d1 = 0;
+$checks3d1 = [
+    ['name' => 'Counted', 'check' => function () use (&$calls3d1) { $calls3d1++; return ['state' => 'ok']; }],
+];
+file_put_contents($cacheFile3d, json_encode([
+    'checks' => [['name' => 'Counted', 'state' => 'ok', 'detail' => null, 'last_success_ts' => null, 'duration_ms' => 0, 'adminOnly' => false]],
+]));
+Status::run($checks3d1, ['cacheFile' => $cacheFile3d, 'cacheTtl' => 60]);
+check($calls3d1 === 1, '3d: Cache-JSON ohne generated_ts-Key -> Check läuft erneut (war: ' . $calls3d1 . ')');
+
+// ── 3e. generated_ts nicht-numerisch (String/null) -> Cache gilt nicht, kein Fatal ──
+$cacheFile3e = $tmpDir . '/cache_nonnumeric_ts.json';
+$calls3e = 0;
+$checks3e = [
+    ['name' => 'Counted', 'check' => function () use (&$calls3e) { $calls3e++; return ['state' => 'ok']; }],
+];
+file_put_contents($cacheFile3e, json_encode([
+    'generated_ts' => 'garbage',
+    'checks'       => [['name' => 'Counted', 'state' => 'ok', 'detail' => null, 'last_success_ts' => null, 'duration_ms' => 0, 'adminOnly' => false]],
+]));
+Status::run($checks3e, ['cacheFile' => $cacheFile3e, 'cacheTtl' => 60]);
+check($calls3e === 1, '3e: nicht-numerisches generated_ts ("garbage") im Cache -> Check läuft erneut, kein Fatal (war: ' . $calls3e . ')');
+
 // ── 3d. Ungültiger state-Wert aus Check-Callable -> normalisiert auf fail ──
 $checks3d = [
     ['name' => 'Weird-Check', 'check' => fn() => ['state' => 'weird']],
