@@ -28,7 +28,7 @@ namespace Erikr\Chrome;
  *
  *   $checks = [
  *       ['name' => 'Datenbank', 'check' => function () use ($con) {
- *           return Status::dbCheck(fn() => $con->ping());
+ *           return Status::dbCheck(fn() => $con->query('SELECT 1') !== false);
  *       }],
  *       ['name' => 'Externe API', 'check' => function () {
  *           return Status::httpCheck('https://example.com/health');
@@ -304,16 +304,16 @@ final class Status
     }
 
     /**
-     * Reads the cache file if present and within $ttl seconds (by mtime).
+     * Reads the cache file if present and within $ttl seconds. Validity is
+     * judged by the `generated_ts` stored *inside* the JSON (not the file's
+     * mtime) — mtime reflects when the file was last written/touched, not
+     * when the checks actually ran, and can drift from it (e.g. a rewrite of
+     * identical content, or filesystem timestamp quirks).
      * Returns null (=> caller must re-run checks) on any miss/invalid content.
      */
     private static function readCache(string $file, int $ttl): ?array
     {
         if (!is_file($file)) {
-            return null;
-        }
-        $mtime = filemtime($file);
-        if ($mtime === false || (time() - $mtime) > $ttl) {
             return null;
         }
         $raw = @file_get_contents($file);
@@ -322,6 +322,9 @@ final class Status
         }
         $data = json_decode($raw, true);
         if (!is_array($data) || !isset($data['checks'], $data['generated_ts']) || !is_array($data['checks'])) {
+            return null;
+        }
+        if (!is_int($data['generated_ts']) || (time() - $data['generated_ts']) > $ttl) {
             return null;
         }
         return $data;

@@ -24,18 +24,18 @@ final class AppsMenu
     /**
      * Canonical suite registry. Key = stable app identifier passed as
      * $currentKey; order here is the rendered order. `prod` is the absolute
-     * jardyx.com URL, `test` the local *.test URL.
+     * jardyx.com URL.
      *
-     * @var array<string, array{label: string, prod: string, test: string}>
+     * @var array<string, array{label: string, prod: string}>
      */
     private const APPS = [
-        'energie'   => ['label' => 'Energie',    'prod' => 'https://energie.jardyx.com',   'test' => 'http://energie.test'],
-        'wlmonitor' => ['label' => 'WL Monitor', 'prod' => 'https://wlmonitor.jardyx.com', 'test' => 'http://wlmonitor.test'],
-        'zeit'      => ['label' => 'Zeit',       'prod' => 'https://zeit.jardyx.com',      'test' => 'http://zeit.test'],
-        'chat'      => ['label' => 'Chat',       'prod' => 'https://chat.jardyx.com',      'test' => 'http://chat.test'],
-        'suche'     => ['label' => 'Suche',      'prod' => 'https://www.jardyx.com',       'test' => 'http://suche.test'],
-        'lastfm'    => ['label' => 'Last.fm',    'prod' => 'https://lastfm.jardyx.com',    'test' => 'http://lastfm.test'],
-        'biblio'    => ['label' => 'Biblio',     'prod' => 'https://biblio.jardyx.com',    'test' => 'http://biblio.test'],
+        'energie'   => ['label' => 'Energie',    'prod' => 'https://energie.jardyx.com'],
+        'wlmonitor' => ['label' => 'WL Monitor', 'prod' => 'https://wlmonitor.jardyx.com'],
+        'zeit'      => ['label' => 'Zeit',       'prod' => 'https://zeit.jardyx.com'],
+        'chat'      => ['label' => 'Chat',       'prod' => 'https://chat.jardyx.com'],
+        'suche'     => ['label' => 'Suche',      'prod' => 'https://www.jardyx.com'],
+        'lastfm'    => ['label' => 'Last.fm',    'prod' => 'https://lastfm.jardyx.com'],
+        'biblio'    => ['label' => 'Biblio',     'prod' => 'https://biblio.jardyx.com'],
     ];
 
     /**

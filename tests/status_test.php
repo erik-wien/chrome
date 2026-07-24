@@ -73,7 +73,8 @@ check($calls2 === 1, '2: Check-Callable läuft bei Cache-Hit nur einmal (war: ' 
 check($rA['generated_ts'] === $rB['generated_ts'], '2: Cache-Hit liefert identisches generated_ts');
 check(is_file($cacheFile2), '2: Cache-Datei wurde angelegt');
 
-// ── 3. Cache-Ablauf via manipulierter mtime → Check läuft erneut ─────────
+// ── 3. Cache-Ablauf via manipuliertem generated_ts im Cache-Inhalt → Check läuft erneut ──
+// TTL-Quelle ist generated_ts im JSON, nicht filemtime() (vgl. 3c: mtime bleibt frisch).
 $cacheFile3 = $tmpDir . '/cache_expired.json';
 $calls3 = 0;
 $checks3 = [
@@ -81,9 +82,53 @@ $checks3 = [
 ];
 Status::run($checks3, ['cacheFile' => $cacheFile3, 'cacheTtl' => 60]);
 check($calls3 === 1, '3: erster run() führt den Check aus');
-touch($cacheFile3, time() - 3600); // mtime weit in die Vergangenheit -> Cache abgelaufen
+$cached3 = json_decode((string) file_get_contents($cacheFile3), true);
+$cached3['generated_ts'] = time() - 3600; // im Inhalt weit in die Vergangenheit -> Cache abgelaufen
+file_put_contents($cacheFile3, json_encode($cached3));
 Status::run($checks3, ['cacheFile' => $cacheFile3, 'cacheTtl' => 60]);
-check($calls3 === 2, '3: abgelaufener Cache -> Check läuft erneut (war: ' . $calls3 . ')');
+check($calls3 === 2, '3: abgelaufener Cache (generated_ts) -> Check läuft erneut (war: ' . $calls3 . ')');
+
+// ── 3b. Kaputtes/unlesbares Cache-JSON → run() crasht nicht, führt Check neu aus ──
+$cacheFile3b = $tmpDir . '/cache_broken.json';
+file_put_contents($cacheFile3b, 'not json');
+$calls3b = 0;
+$checks3b = [
+    ['name' => 'Counted', 'check' => function () use (&$calls3b) { $calls3b++; return ['state' => 'ok']; }],
+];
+$r3b = Status::run($checks3b, ['cacheFile' => $cacheFile3b, 'cacheTtl' => 60]);
+check($calls3b === 1, '3b: kaputtes Cache-JSON -> run() führt Check aus statt zu crashen');
+check($r3b['checks'][0]['state'] === 'ok', '3b: Ergebnis trotz kaputtem Cache korrekt');
+
+// ── 3c. TTL-Prüfung nutzt generated_ts aus dem Cache-Inhalt, nicht filemtime() ──
+$cacheFile3c = $tmpDir . '/cache_stale_ts.json';
+$calls3c = 0;
+$checks3c = [
+    ['name' => 'Counted', 'check' => function () use (&$calls3c) { $calls3c++; return ['state' => 'ok']; }],
+];
+// Cache-Datei mit frischer mtime, aber altem generated_ts im Inhalt schreiben.
+file_put_contents($cacheFile3c, json_encode([
+    'generated_ts' => time() - 3600,
+    'checks'       => [['name' => 'Counted', 'state' => 'ok', 'detail' => null, 'last_success_ts' => null, 'duration_ms' => 0, 'adminOnly' => false]],
+]));
+Status::run($checks3c, ['cacheFile' => $cacheFile3c, 'cacheTtl' => 60]);
+check($calls3c === 1, '3c: altes generated_ts im Cache-Inhalt (trotz frischer mtime) -> Check läuft erneut');
+
+// ── 3d. Ungültiger state-Wert aus Check-Callable -> normalisiert auf fail ──
+$checks3d = [
+    ['name' => 'Weird-Check', 'check' => fn() => ['state' => 'weird']],
+];
+$r3d = Status::run($checks3d);
+check($r3d['checks'][0]['state'] === 'fail', '3d: run() normalisiert ungültigen state ("weird") auf fail');
+
+$results3d = [
+    'generated_ts' => 1700000000,
+    'checks' => [
+        ['name' => 'Weird-Check', 'state' => 'weird', 'detail' => null, 'last_success_ts' => null, 'adminOnly' => false],
+    ],
+];
+$json3d = Status::json($results3d, ['app' => 'testapp']);
+$decoded3d = json_decode($json3d, true);
+check($decoded3d['checks'][0]['state'] === 'fail', '3d: json() normalisiert ungültigen state ("weird") auf fail');
 
 // ── 4. adminOnly-Filterung in render(): User sieht Check nicht, Admin ja ──
 $results4 = [
