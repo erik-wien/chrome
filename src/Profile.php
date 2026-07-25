@@ -145,7 +145,13 @@ final class Profile
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
         $nonceAttr = $nonce !== '' ? ' nonce="' . $e($nonce) . '"' : '';
 
-        echo '<div class="container-sm profile-page">';
+        echo '<style' . $nonceAttr . '>';
+        echo '.profile-app-section-item{padding:.5rem 1rem;background:var(--color-surface,#fff);'
+           . 'border:1px solid var(--color-border,#ddd);color:var(--color-text,#212529)}';
+        echo '.profile-divider{border:0;border-top:1px solid var(--color-border,#ddd);margin:1rem 0}';
+        echo '</style>';
+
+        echo '<div class="pref-section profile-page">';
 
         // ── Avatar ────────────────────────────────────────────────────────
         echo '<div class="profile-avatar-block" style="text-align:center;margin-bottom:1.5rem">';
@@ -228,18 +234,18 @@ final class Profile
 
         // ── App-spezifische Abschnitte ────────────────────────────────────
         if (!empty($appSections)) {
-            echo '<hr class="dropdown-divider">';
+            echo '<hr class="profile-divider">';
             echo '<div class="profile-app-sections">';
             foreach ($appSections as $section) {
                 if (!is_array($section)) {
                     continue;
                 }
                 if (isset($section['html'])) {
-                    echo '<div class="list-group-item">' . (string) $section['html'] . '</div>';
+                    echo '<div class="profile-app-section-item">' . (string) $section['html'] . '</div>';
                 } else {
                     $label = (string) ($section['label'] ?? '');
                     $href  = (string) ($section['href']  ?? '#');
-                    echo '<div class="list-group-item"><a href="' . $e($href) . '">' . $e($label) . '</a></div>';
+                    echo '<div class="profile-app-section-item"><a href="' . $e($href) . '">' . $e($label) . '</a></div>';
                 }
             }
             echo '</div>';

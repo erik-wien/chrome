@@ -66,10 +66,10 @@ $html1 = renderProfile([
 ]);
 $sectionsPos = strpos($html1, '<div class="profile-app-sections">');
 check($sectionsPos !== false, '1: profile-app-sections container present');
-$rowCount = substr_count($html1, '<div class="list-group-item">');
-check($rowCount === 3, '1: three .list-group-item rows, one per appSection (' . $rowCount . ' found)');
-assertContains('<div class="list-group-item"><a href="notifications.php">Benachrichtigungen</a></div>', $html1, '1: label/href section renders as a full-width link row');
-assertContains('<div class="list-group-item"><form method="post" action="x.php"><button>Do</button></form></div>', $html1, '1: html section renders raw markup unescaped inside its own row');
+$rowCount = substr_count($html1, '<div class="profile-app-section-item">');
+check($rowCount === 3, '1: three .profile-app-section-item rows, one per appSection (' . $rowCount . ' found)');
+assertContains('<div class="profile-app-section-item"><a href="notifications.php">Benachrichtigungen</a></div>', $html1, '1: label/href section renders as a full-width link row');
+assertContains('<div class="profile-app-section-item"><form method="post" action="x.php"><button>Do</button></form></div>', $html1, '1: html section renders raw markup unescaped inside its own row');
 // Regression guard: no flex/pill container class anywhere in the output
 assertNotContains('pill', $html1, '1: no "pill" class anywhere (appSections are rows, not pills)');
 

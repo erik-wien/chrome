@@ -165,6 +165,25 @@ $con2 = new FakeMysqli([], 0);
 LogData::list($con2, 1, 20, ['user' => 'erik']);
 assertContains('LIKE', $con2->prepared[0]->sql, "2: pre-existing 'user' filter is still a LIKE (regression guard, not touched by this change)");
 
+// ── 2b. LogData: userId combined with q/app/context stays a standalone,
+//       non-loosenable AND member (not folded into an OR with the other
+//       filters) — the WHERE-level guarantee behind Chrome\Activity's
+//       "only my own rows" hard-scope ─────────────────────────────────────
+$con2b = new FakeMysqli([], 0);
+LogData::list($con2b, 1, 20, ['userId' => 7, 'q' => 'login', 'app' => 'zeit', 'context' => 'auth']);
+check(count($con2b->prepared) === 2, '2b: combined filters still prepare two statements (rows + count)');
+$sql2b       = $con2b->prepared[0]->sql;
+$wherePos2b  = strpos($sql2b, 'WHERE');
+check($wherePos2b !== false, '2b: combined query has a WHERE clause');
+$whereBody2b = substr($sql2b, $wherePos2b + strlen('WHERE '));
+$andParts2b  = array_map('trim', explode(' AND ', $whereBody2b));
+check(in_array('l.idUser = ?', $andParts2b, true), '2b: l.idUser = ? is its own top-level AND member alongside app/context/q, not folded into another condition');
+assertNotContains(' OR ', $whereBody2b, '2b: no OR anywhere in the combined WHERE clause — the AND chain cannot be loosened around userId');
+check($con2b->prepared[0]->types === 'ssisii', "2b: main query bind types are 'ssisii' (app+context+idUser+q + LIMIT + OFFSET), got: " . $con2b->prepared[0]->types);
+check($con2b->prepared[0]->values[2] === 7, '2b: bound idUser value in the combined query is the caller-supplied 7 (exact position among app/context/idUser/q)');
+check($con2b->prepared[1]->types === 'ssis', "2b: count query bind types are 'ssis', got: " . $con2b->prepared[1]->types);
+check($con2b->prepared[1]->values[2] === 7, '2b: count query also binds the exact idUser value at the same position');
+
 // ── 3. Activity::render renders no filter controls ───────────────────────
 $rows3 = [
     ['id' => 1, 'logTime' => '2026-07-20 10:00:00', 'origin' => 'zeit', 'context' => 'login',
