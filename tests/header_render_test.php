@@ -191,6 +191,72 @@ check(substr_count($html10, 'id="dd-sub-apps"') === 1, '10: Label-generiertes Pa
 assertContains('data-target="dd-sub-core-apps"', $html10, '10: Drilldown-Trigger für Cross-App-Links zeigt auf das System-Panel');
 assertContains('data-target="dd-sub-apps"', $html10, '10: Drilldown-Trigger für das appMenu-Item "Apps" zeigt auf das Label-Panel');
 
+// ── 11. Slim dropdown: Profil, Thema-Label, Status, Meine Aktionen, Hilfe, Abmelden ──
+$html11 = renderHeader(['loggedIn' => true]);
+$dd11 = userDropdownSection($html11);
+assertContains('class="dropdown-link-btn">Profil</a>', $dd11, '11: "Profil"-Link im Dropdown');
+assertContains('<span class="dropdown-section-label">Thema</span>', $dd11, '11: "Thema"-Label vor der Theme-Pille');
+assertContains('class="theme-row"', $dd11, '11: Theme-Pille im Dropdown');
+assertContains('class="dropdown-link-btn">Status</a>', $dd11, '11: "Status"-Link im Dropdown');
+assertContains('class="dropdown-link-btn">Meine Aktionen</a>', $dd11, '11: "Meine Aktionen"-Link im Dropdown');
+assertContains('class="dropdown-link-btn">Hilfe</a>', $dd11, '11: "Hilfe"-Link im Dropdown');
+assertContains('>Abmelden</button>', $dd11, '11: "Abmelden"-Button im Dropdown');
+
+// ── 12. Entfernte Gruppen sind komplett weg ──────────────────────────────
+assertNotContains('Benutzereinstellungen', $dd11, '12: kein "Benutzereinstellungen"-Label mehr');
+assertNotContains('>Profilbild</a>', $dd11, '12: kein "Profilbild"-Link mehr');
+assertNotContains('>E-Mail</a>', $dd11, '12: kein "E-Mail"-Link mehr');
+assertNotContains('>Sicherheit</a>', $dd11, '12: kein "Sicherheit"-Link mehr');
+assertNotContains('>Anwendung</a>', $dd11, '12: kein "Anwendung"/appPrefs-Link mehr');
+assertNotContains('>Konto</span>', $dd11, '12: kein Legacy-Flat-"Konto"-Label mehr');
+assertNotContains('>Einstellungen</a>', $dd11, '12: kein Legacy-"Einstellungen"-Link mehr');
+assertNotContains('Passwort &amp; 2FA', $dd11, '12: kein Legacy-"Passwort & 2FA"-Link mehr');
+
+// ── 13. profilHref/activityHref = null → jeweiliger Eintrag fehlt ────────
+$html13 = renderHeader(['loggedIn' => true, 'profilHref' => null, 'activityHref' => null]);
+$dd13 = userDropdownSection($html13);
+assertNotContains('class="dropdown-link-btn">Profil</a>', $dd13, '13: kein "Profil"-Link wenn profilHref=null');
+assertNotContains('class="dropdown-link-btn">Meine Aktionen</a>', $dd13, '13: kein "Meine Aktionen"-Link wenn activityHref=null');
+// Status/Hilfe (unrelated options) bleiben unberührt
+assertContains('class="dropdown-link-btn">Status</a>', $dd13, '13: Status-Link bleibt trotz profilHref/activityHref=null');
+
+// ── 14. Alte Optionen (profileHref etc.) werden entgegengenommen, aber nicht gerendert ──
+$html14 = renderHeader([
+    'loggedIn'      => true,
+    'profileHref'   => '/testapp/profilbild.php',
+    'emailHref'     => '/testapp/email.php',
+    'securityHref'  => '/testapp/sicherheit.php',
+    'appPrefsHref'  => '/testapp/anwendung.php',
+    'appPrefsLabel' => 'Meine Anwendung',
+    'prefsHref'     => '/testapp/einstellungen.php',
+]);
+$dd14 = userDropdownSection($html14);
+assertNotContains('profilbild.php', $html14, '14: profileHref (deprecated) wird nicht gerendert');
+assertNotContains('email.php', $html14, '14: emailHref (deprecated) wird nicht gerendert');
+assertNotContains('sicherheit.php', $html14, '14: securityHref (deprecated) wird nicht gerendert');
+assertNotContains('anwendung.php', $html14, '14: appPrefsHref (deprecated) wird nicht gerendert');
+assertNotContains('Meine Anwendung', $html14, '14: appPrefsLabel (deprecated) wird nicht gerendert');
+assertNotContains('einstellungen.php', $html14, '14: prefsHref (deprecated) wird nicht gerendert');
+// Aber die schlanke Dropdown-Struktur bleibt intakt (kein Fehler, kein leerer Output)
+assertContains('class="dropdown-link-btn">Profil</a>', $dd14, '14: reguläres "Profil" trotz übergebener Alt-Optionen weiterhin da');
+
+// ── 15. Mobile-Spiegelung bleibt bei aktiviertem Slim-Dropdown unverändert ──
+$html15 = renderHeader([
+    'loggedIn' => true,
+    'isAdmin'  => true,
+    'appMenu'  => [],
+    'appsMenu' => $appsMenuJardyx,
+]);
+$navSection15pos = strpos($html15, '<div class="dropdown-nav-section">');
+$navSection15end = $navSection15pos !== false ? strpos($html15, '<div class="dropdown-divider"></div>', $navSection15pos) : false;
+$navSection15 = ($navSection15pos !== false && $navSection15end !== false)
+    ? substr($html15, $navSection15pos, $navSection15end - $navSection15pos)
+    : '';
+assertContains('data-target="dd-sub-core-administration"', $navSection15, '15: Administration-Drilldown-Trigger unverändert vorhanden');
+assertContains('data-target="dd-sub-core-apps"', $navSection15, '15: Apps-Drilldown-Trigger unverändert vorhanden');
+assertContains('<div class="dd-sub" id="dd-sub-core-administration">', $html15, '15: dd-sub-Panel für Administration unverändert vorhanden');
+assertContains('<div class="dd-sub" id="dd-sub-core-apps">', $html15, '15: dd-sub-Panel für Apps unverändert vorhanden');
+
 // ── Summary ────────────────────────────────────────────────────────────
 echo "\n";
 if ($failures !== []) {

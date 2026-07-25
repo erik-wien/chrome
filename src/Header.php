@@ -27,14 +27,28 @@ namespace Erikr\Chrome;
  *                              // after "Verwaltung" (admin.php) when isAdmin
  *           ['href' => 'admin_users.php', 'label' => 'Benutzer'],
  *       ],
- *       'statusHref'  => $base . '/status.php', // null suppresses the "Status" link
- *       'extraItems'  => [],   // raw HTML snippets rendered before theme row
+ *       'statusHref'  => $base . '/status.php',    // null suppresses the "Status" link
+ *       'profilHref'  => $base . '/profil.php',    // null suppresses the "Profil" link
+ *       'activityHref'=> $base . '/aktivitaet.php',// null suppresses "Meine Aktionen"
+ *       'extraItems'  => [],   // raw HTML snippets rendered after the theme pill
  *       'leftExtra'   => '',   // raw HTML snippet rendered inside .header-left
  *                              // after the brand (e.g. a search box)
  *       'spritePath'  => null, // absolute path to an SVG sprite file; if set,
  *                              // readfile()d immediately after <body> so
  *                              // <use href="#icon-…"> resolves inline
  *   ]);
+ *
+ * User dropdown (slim, top to bottom): Profil, Thema, extraItems, Trenner,
+ * Status, Meine Aktionen, Hilfe, Trenner, Abmelden. Profil (profilHref) and
+ * Meine Aktionen (activityHref) hand off to Chrome\Profile / Chrome\Activity
+ * respectively — the app renders its own page around them.
+ *
+ * @deprecated The options 'profileHref', 'emailHref', 'securityHref',
+ *   'appPrefsHref', 'appPrefsLabel' and 'prefsHref' are still accepted for
+ *   backwards compatibility (existing callers pass them without error) but
+ *   are no longer rendered — that content now lives on the app's profile
+ *   page via Chrome\Profile::render(). Stop passing them; wire a profilHref
+ *   to a page that calls Chrome\Profile::render() instead.
  */
 final class Header
 {
@@ -82,10 +96,10 @@ final class Header
         $brandHref     = $a['brandHref']     ?? ($base . '/');
         $brandLogoSrc  = $a['brandLogoSrc']  ?? ($base . '/assets/jardyx.svg');
         $avatarSrc     = $a['avatarSrc']     ?? ($base . '/avatar.php');
-        $prefsHref     = $a['prefsHref']     ?? ($base . '/preferences.php');
-        $securityHref  = $a['securityHref']  ?? ($base . '/password.php');
         $adminHref     = $a['adminHref']     ?? ($base . '/admin.php');
         $statusHref    = array_key_exists('statusHref', $a) ? $a['statusHref'] : ($base . '/status.php');
+        $profilHref    = array_key_exists('profilHref', $a) ? $a['profilHref'] : ($base . '/profil.php');
+        $activityHref  = array_key_exists('activityHref', $a) ? $a['activityHref'] : ($base . '/aktivitaet.php');
         $helpHref      = array_key_exists('helpHref', $a) ? $a['helpHref'] : ($base . '/help.php');
         $logoutHref    = $a['logoutHref']    ?? ($base . '/logout.php');
         $themeEndpoint = $a['themeEndpoint'] ?? ($base . '/preferences.php');
@@ -108,11 +122,9 @@ final class Header
         }
         $showAdminDropdown = !empty($adminChildren);
 
-        // Grouped user dropdown params (new — null = use legacy flat mode)
-        $profileHref   = $a['profileHref']  ?? null;
-        $emailHref     = $a['emailHref']    ?? null;
-        $appPrefsHref  = $a['appPrefsHref'] ?? null;
-        $appPrefsLabel = (string) ($a['appPrefsLabel'] ?? 'Anwendung');
+        // Note: $a['profileHref'], $a['emailHref'], $a['securityHref'],
+        // $a['appPrefsHref'], $a['appPrefsLabel'], $a['prefsHref'] are accepted
+        // (deprecated) but intentionally not read here — see the class docblock.
 
         // forms.js path — defaults to the standard shared-symlink location;
         // pass formsJsPath => null to opt out, or an explicit path to override.
@@ -299,39 +311,31 @@ final class Header
             }
 
             // ── Account section ─────────────────────────────────────────────
-            if ($profileHref !== null) {
-                // Grouped mode: Benutzereinstellungen group (Profilbild + E-Mail only)
-                echo '<span class="dropdown-section-label">Benutzereinstellungen</span>';
-                echo '<a href="' . $e((string) $profileHref) . '" class="dropdown-link-btn">Profilbild</a>';
-                if ($emailHref !== null) {
-                    echo '<a href="' . $e((string) $emailHref) . '" class="dropdown-link-btn">E-Mail</a>';
-                }
-                // Sicherheit is top-level per §12 — visually separate from the group above
-                echo '<div class="dropdown-divider"></div>';
-                echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Sicherheit</a>';
-                if ($appPrefsHref !== null) {
-                    echo '<a href="' . $e((string) $appPrefsHref) . '" class="dropdown-link-btn">'
-                       . $e($appPrefsLabel) . '</a>';
-                }
-            } else {
-                // Legacy flat mode — backwards-compatible
-                echo '<span class="dropdown-username">Konto</span>';
-                echo '<div class="dropdown-divider"></div>';
-                echo '<a href="' . $e((string) $prefsHref) . '" class="dropdown-link-btn">Einstellungen</a>';
-                echo '<a href="' . $e((string) $securityHref) . '" class="dropdown-link-btn">Passwort &amp; 2FA</a>';
+            // Slim dropdown (Erik-approved mockup, 2026-07-25): Profil → Thema
+            // → extraItems → Trenner → Status → Meine Aktionen → Hilfe →
+            // Trenner → Abmelden. The old grouped ("Benutzereinstellungen"/
+            // Sicherheit/Anwendung) and legacy flat ("Konto"/Einstellungen/
+            // Passwort & 2FA) account sections moved to the dedicated profile
+            // page — see Chrome\Profile.
+            if ($profilHref !== null) {
+                echo '<a href="' . $e((string) $profilHref) . '" class="dropdown-link-btn">Profil</a>';
             }
-            if ($statusHref !== null) {
-                echo '<a href="' . $e((string) $statusHref) . '" class="dropdown-link-btn">Status</a>';
-            }
+            echo '<span class="dropdown-section-label">Thema</span>';
+            echo self::renderThemePill($theme);
             if (!empty($extras)) {
                 foreach ($extras as $snippet) { echo (string) $snippet; }
             }
             echo '<div class="dropdown-divider"></div>';
-            echo self::renderThemePill($theme);
-            echo '<div class="dropdown-divider"></div>';
+            if ($statusHref !== null) {
+                echo '<a href="' . $e((string) $statusHref) . '" class="dropdown-link-btn">Status</a>';
+            }
+            if ($activityHref !== null) {
+                echo '<a href="' . $e((string) $activityHref) . '" class="dropdown-link-btn">Meine Aktionen</a>';
+            }
             if ($helpHref !== null) {
                 echo '<a href="' . $e((string) $helpHref) . '" class="dropdown-link-btn">Hilfe</a>';
             }
+            echo '<div class="dropdown-divider"></div>';
             echo '<form method="post" action="' . $e((string) $logoutHref) . '" style="margin:0">';
             if ($csrf !== '') {
                 echo '<input type="hidden" name="csrf_token" value="' . $e($csrf) . '">';
