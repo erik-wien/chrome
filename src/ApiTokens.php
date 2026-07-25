@@ -104,8 +104,15 @@ namespace Erikr\Chrome;
  *      exit;
  *
  * No emojis (Rule §11), all dynamic values htmlspecialchars()-escaped, no
- * hardcoded colors (Rule §1/§9). Buttons: "Token anlegen" and "Widerrufen"
- * are both data-changing/non-primary → `.btn-outline-danger` (Rule §7.1).
+ * hardcoded colors (Rule §1/§9), no inline `style="…"` attributes — spacing
+ * uses the canonical `.mt-2`/`.mt-3` utilities (layout.css). Buttons: "Token
+ * anlegen" and "Widerrufen" are both data-changing/non-primary →
+ * `.btn-outline-danger` (Rule §7.1), both real `<button>` elements. The list
+ * markup (`.list-group-item`, `.list-unstyled`, `.d-flex`, `.gap-2`,
+ * `.flex-column`, `.text-muted`, `.fw-semibold`, `.align-items-center`,
+ * `.justify-content-between`) uses only classes defined in css_library's own
+ * components.css/layout.css (verified) — these are this design system's own
+ * utility/component classes, not an import of an external framework.
  */
 final class ApiTokens
 {
@@ -132,7 +139,7 @@ final class ApiTokens
         echo '<div id="apiTokenReveal" class="app-alert app-alert-info" hidden aria-live="polite">';
         echo '<p><strong>Token jetzt sichern</strong> — es wird nie wieder angezeigt.</p>';
         echo '<div class="form-group"><input type="text" id="apiTokenRevealField" class="form-control" readonly></div>';
-        echo '<div style="margin-top:.5rem">';
+        echo '<div class="mt-2">';
         echo '<button type="button" class="btn btn-sm" id="apiTokenRevealCopy">Kopieren</button> ';
         echo '<button type="button" class="btn btn-sm" id="apiTokenRevealDone">Fertig</button>';
         echo '</div>';
@@ -150,7 +157,7 @@ final class ApiTokens
         }
         echo '</ul>';
 
-        echo '<form id="apiTokenCreateForm" style="margin-top:1rem">';
+        echo '<form id="apiTokenCreateForm" class="mt-3">';
         echo '<div class="form-group"><label for="apiTokenLabel">Bezeichnung</label>';
         echo '<input type="text" id="apiTokenLabel" name="label" class="form-control" maxlength="100" '
            . 'placeholder="z. B. Gerätename"></div>';

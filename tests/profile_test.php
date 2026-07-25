@@ -242,6 +242,28 @@ assertContains('id="apiTokenRevealField" class="form-control" readonly', $html9b
 assertContains('type="module" src="' . '/css/shared/js/dialog.js' . '"', $html9b, '9b: dialog.js loaded as a module when tokenAction is set');
 assertContains('type="module" src="' . '/css/shared/js/api-tokens.js' . '"', $html9b, '9b: api-tokens.js loaded as a module');
 
+// ── 10. Canonical buttons: no inline style="…" attributes anywhere, and no
+//        size-class mixing within a button row (Rule §7.1 / UI design rules) ─
+$html10 = renderProfile([
+    'avatarClearAction' => 'profil.php',
+    'emailEditAction'   => 'profil.php',
+    'tokenAction'       => 'profil.php',
+    'tokens'            => $tokenFixture,
+    'appSections'       => [['label' => 'Extra', 'href' => 'extra.php']],
+]);
+assertNotContains('style="', $html10, '10: no inline style="…" attribute anywhere in a fully-featured render — spacing/layout comes from canonical classes only');
+
+// Avatar row ("Profilbild ändern" + "Profilbild entfernen"): both bare-size
+// (.btn / .btn-outline-danger), neither is .btn-sm — same size class in the row.
+$avatarRowStart = strpos($html10, 'profile-avatar-block');
+$avatarRowEnd = strpos($html10, '</div>', $avatarRowStart);
+$avatarRow = substr($html10, $avatarRowStart, $avatarRowEnd - $avatarRowStart);
+assertNotContains('btn-sm', $avatarRow, '10: avatar row buttons are not .btn-sm (would mix sizes with the bare .btn label)');
+
+// "Profilbild ändern" is a real canonical .btn (label wired to the hidden
+// file input — cursor comes from .btn itself, no inline cursor override needed).
+assertContains('<label class="btn" for="profileAvatarFile">', $html10, '10: file-picker trigger is a canonical .btn label, no inline cursor style');
+
 // ── Summary ────────────────────────────────────────────────────────────
 echo "\n";
 if ($failures !== []) {

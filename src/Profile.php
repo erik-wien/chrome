@@ -236,6 +236,12 @@ final class Profile
         echo '.profile-app-section-item{padding:.5rem 1rem;background:var(--color-surface);'
            . 'border:1px solid var(--color-border);color:var(--color-text)}';
         echo '.profile-divider{border:0;border-top:1px solid var(--color-border);margin:1rem 0}';
+        // Component-specific sizing with no direct utility-class equivalent
+        // (border-radius:50% + object-fit combo) — everything else below uses
+        // the canonical spacing/alignment utilities from layout.css instead
+        // of inline styles (.text-center, .mb-4, .mt-3/.mb-3).
+        echo '.profile-avatar-img{width:128px;height:128px;border-radius:50%;'
+           . 'object-fit:cover;display:block;margin:0 auto .75rem}';
         echo '</style>';
 
         echo '<div class="pref-section profile-page">';
@@ -245,11 +251,15 @@ final class Profile
         }
 
         // ── Avatar ────────────────────────────────────────────────────────
-        echo '<div class="profile-avatar-block" style="text-align:center;margin-bottom:1.5rem">';
-        echo '<img src="' . $e($avatarSrc) . '" alt="" width="128" height="128" '
-           . 'style="width:128px;height:128px;border-radius:50%;object-fit:cover;display:block;margin:0 auto 0.75rem">';
+        echo '<div class="profile-avatar-block text-center mb-4">';
+        echo '<img src="' . $e($avatarSrc) . '" alt="" width="128" height="128" class="profile-avatar-img">';
         echo '<input type="file" id="profileAvatarFile" class="visually-hidden" '
            . 'accept="image/jpeg,image/png,image/gif,image/webp">';
+        // <label class="btn"> as the file-picker trigger: no separate
+        // cursor:pointer needed here — `.btn` in components.css already sets
+        // `cursor: pointer` on the class itself (applies to any element,
+        // label included), unlike the `style="cursor:pointer"` duplicates
+        // seen in some apps' own admin pages (predating that base rule).
         echo '<label class="btn" for="profileAvatarFile">Profilbild ändern</label>';
         if ($avatarClearAction !== null) {
             echo ' <button type="button" class="btn btn-outline-danger" id="profileAvatarClear">Profilbild entfernen</button>';
@@ -357,7 +367,7 @@ final class Profile
         }
 
         // ── Kennwort ändern ───────────────────────────────────────────────
-        echo '<div style="margin:1rem 0">';
+        echo '<div class="mt-3 mb-3">';
         echo '<a href="' . $e($passwordHref) . '" class="btn">Kennwort ändern</a>';
         echo '</div>';
 
