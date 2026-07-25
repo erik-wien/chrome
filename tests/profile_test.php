@@ -171,10 +171,12 @@ assertContains('var(--color-border)', $styleBlock8, '8: uses the --color-border 
 check(!preg_match('/(background|color)\s*:\s*(?!var\()/i', $styleBlock8),
     '8: jede Farbangabe im <style>-Block nutzt ein var(--…)-Token');
 
-// ── 9. API-Token block: only with tokenAction, list + escaping + buttons ──
+// ── 9. "Tokens verwalten" dialog: only with tokenAction, list + escaping + buttons ──
 $html9 = renderProfile([]);
-assertNotContains('id="apiTokensBlock"', $html9, '9: no API-Token block when tokenAction is not set');
-assertNotContains('API-Token', $html9, '9: no "API-Token" heading when tokenAction is not set');
+assertNotContains('id="apiTokensBlock"', $html9, '9: no API-Token dialog body when tokenAction is not set');
+assertNotContains('id="apiTokensModal"', $html9, '9: no API-Token dialog backdrop when tokenAction is not set');
+assertNotContains('id="apiTokensToggle"', $html9, '9: no "Tokens verwalten" trigger button when tokenAction is not set');
+assertNotContains('Tokens verwalten', $html9, '9: no "Tokens verwalten" text anywhere when tokenAction is not set');
 
 $tokenFixture = [
     [
@@ -189,22 +191,52 @@ $tokenFixture = [
     ],
 ];
 $html9b = renderProfile(['tokenAction' => 'profil.php', 'tokens' => $tokenFixture]);
-assertContains('id="apiTokensBlock"', $html9b, '9b: API-Token block present when tokenAction is set');
-assertContains('<h2>API-Token</h2>', $html9b, '9b: "API-Token" heading present');
+assertContains('id="apiTokensBlock"', $html9b, '9b: API-Token dialog body present when tokenAction is set');
+assertContains('id="apiTokensModal"', $html9b, '9b: dialog backdrop present');
+assertContains('<h2 class="app-modal-title" id="apiTokensModal-titel">Tokens verwalten</h2>', $html9b, '9b: dialog title "Tokens verwalten" present');
 assertContains('data-action="profil.php"', $html9b, '9b: block carries the tokenAction POST target');
 
-// Section order: heading comes after "Kennwort ändern", before appSections.
+// Trigger button: "Tokens verwalten (N)" with the correct count, bare .btn,
+// analogous to "Kennwort ändern", opens the dialog via data-modal-open.
+assertContains('id="apiTokensToggle"', $html9b, '9b: trigger button present');
+assertContains('Tokens verwalten (2)', $html9b, '9b: trigger button shows the correct token count');
+assertContains('data-modal-open="apiTokensModal"', $html9b, '9b: trigger button opens the dialog by id');
+$toggleBtnPos = strpos($html9b, 'id="apiTokensToggle"');
+$toggleTagStart = strrpos(substr($html9b, 0, $toggleBtnPos), '<button');
+$toggleTagEnd = strpos($html9b, '>', $toggleBtnPos);
+$toggleBtnTag = substr($html9b, $toggleTagStart, $toggleTagEnd - $toggleTagStart);
+assertContains('class="btn"', $toggleBtnTag, '9b: trigger button is a bare .btn (neutral, changes nothing by itself — Rule §7.1)');
+
+// 0 tokens still shows the trigger button, with "(0)".
+$html9e = renderProfile(['tokenAction' => 'profil.php', 'tokens' => []]);
+assertContains('Tokens verwalten (0)', $html9e, '9e: trigger button shows "(0)" when the account has no tokens');
+
+// Dialog is present in the markup but hidden initially, with the required
+// a11y attributes (Rule §5).
+assertContains('id="apiTokensModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="apiTokensModal-titel" hidden', $html9b, '9b: dialog backdrop starts hidden and carries role/aria-modal/aria-labelledby');
+
+// Section order: trigger button sits right after "Kennwort ändern", dialog
+// markup follows, appSections come last.
 $html9c = renderProfile([
     'tokenAction' => 'profil.php',
     'tokens'      => $tokenFixture,
     'appSections' => [['label' => 'Extra', 'href' => 'extra.php']],
 ]);
 $kennwortPos = strpos($html9c, 'Kennwort ändern');
-$tokenHeadingPos = strpos($html9c, '<h2>API-Token</h2>');
+$toggleBtnPos9c = strpos($html9c, 'id="apiTokensToggle"');
+$dialogPos = strpos($html9c, 'id="apiTokensModal"');
 $appSectionsPos = strpos($html9c, '<div class="profile-app-sections">');
-check($kennwortPos !== false && $tokenHeadingPos !== false && $appSectionsPos !== false
-    && $kennwortPos < $tokenHeadingPos && $tokenHeadingPos < $appSectionsPos,
-    '9c: API-Token section sits after Kennwort-ändern and before appSections');
+check($kennwortPos !== false && $toggleBtnPos9c !== false && $dialogPos !== false && $appSectionsPos !== false
+    && $kennwortPos < $toggleBtnPos9c && $toggleBtnPos9c < $dialogPos && $dialogPos < $appSectionsPos,
+    '9c: trigger button follows Kennwort-ändern, dialog follows the button, appSections come last');
+
+// The token list markup lives inside the dialog body (#apiTokensBlock),
+// not loose in the page flow — i.e. between the dialog backdrop's opening
+// tag and its matching close, not before it.
+$backdropOpenPos = strpos($html9c, '<div class="app-modal-backdrop" id="apiTokensModal"');
+$listPos9c = strpos($html9c, 'id="apiTokensList"');
+check($backdropOpenPos !== false && $listPos9c !== false && $backdropOpenPos < $listPos9c,
+    '9c: token list sits after the dialog backdrop opens (inside the dialog, not in the page flow)');
 
 // List renders both entries, escaped, one Widerrufen button each.
 assertContains('data-token-id="7"', $html9b, '9b: token id 7 rendered');

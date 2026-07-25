@@ -9,6 +9,14 @@ namespace Erikr\Chrome;
  * "Sicherheit" link and "Anwendung"/appPrefs, which used to live directly in
  * Header's user dropdown (see Header::render()'s deprecated options).
  *
+ * "Tokens verwalten (N)" button (2026-07-25, Erik: "Die API-Token Verwaltung
+ * ist jetzt direkt im Profil. Das ist unschön. Schreib nur: 'Tokens verwalten
+ * (#)' und mach das analog Kennwort ändern in einem eigenen Dialog.") — the
+ * API-token list/create/revoke UI that used to sit inline on this page now
+ * lives in its own dialog (Erikr\Chrome\ApiTokens::render(), a canonical
+ * `.app-modal-backdrop`), opened from a bare `.btn` next to "Kennwort
+ * ändern". See the `tokenAction`/`tokens` keys below.
+ *
  * Renders CONTENT only — no page shell (`<!DOCTYPE>`/`<head>`/Header/Footer).
  * render() emits its OWN `<div class="pref-section profile-page">` wrapper
  * (520px cap per Rule §16) — the caller must NOT wrap the render() call in
@@ -50,10 +58,10 @@ namespace Erikr\Chrome;
  * Layout (top to bottom): `<h1>` heading, 128px round avatar + "Profilbild
  * ändern" button (+ optional "Profilbild entfernen" button, see
  * `avatarClearAction`), "Benutzername" (display-only, no edit — deferred per
- * Erik), "E-Mail" (value + pencil edit button), "Kennwort ändern" button,
- * optional "API-Token" section (see `tokens`/`tokenAction` — Erikr\Chrome\
- * ApiTokens, rendered only when `tokenAction` is set), divider, appSections
- * listed one per row (never as side-by-side pills).
+ * Erik), "E-Mail" (value + pencil edit button), "Kennwort ändern" button +
+ * (when `tokenAction` is set) "Tokens verwalten (N)" button in the same row
+ * — both open in place (navigation / dialog), no separate section below —
+ * divider, appSections listed one per row (never as side-by-side pills).
  *
  * ── $cfg contract ─────────────────────────────────────────────────────────
  *
@@ -120,19 +128,37 @@ namespace Erikr\Chrome;
  *                                       it elsewhere is harmless: the browser
  *                                       dedupes module scripts by URL.
  *   tokens               list<array>   Output of `auth_api_tokens_list()`.
- *                                       Only rendered when `tokenAction` is
- *                                       also set (see below); defaults to
- *                                       `[]` (empty-state text shown).
- *   tokenAction          string|null   POST target for the "API-Token"
- *                                       section — Erikr\Chrome\ApiTokens
- *                                       (token_create/token_revoke, see its
- *                                       own docblock for the exact contract).
- *                                       Not set (default) → the whole section
- *                                       is omitted, no behavior change
+ *                                       Only used when `tokenAction` is also
+ *                                       set (see below); defaults to `[]`
+ *                                       (dialog shows its empty-state text,
+ *                                       trigger button reads "Tokens
+ *                                       verwalten (0)").
+ *   tokenAction          string|null   POST target for the "Tokens
+ *                                       verwalten" dialog — Erikr\Chrome\
+ *                                       ApiTokens (token_create/token_revoke,
+ *                                       see its own docblock for the exact
+ *                                       contract — UNCHANGED by the
+ *                                       2026-07-25 inline-to-dialog move).
+ *                                       Not set (default) → neither the
+ *                                       trigger button nor the dialog is
+ *                                       rendered, no behavior change
  *                                       (back-compat).
  *   apiTokensJsPath       string        Only used when `tokenAction` is set.
  *                                       Default
  *                                       `$base/css/shared/js/api-tokens.js`.
+ *   adminJsPath           string        Only used when `tokenAction` is set —
+ *                                       provides the shared `openModal()`/
+ *                                       `closeModal()` (focus trap, Escape,
+ *                                       previously-focused-element restore)
+ *                                       that opens/closes the "Tokens
+ *                                       verwalten" dialog; reused rather than
+ *                                       reimplemented (see ApiTokens.php's
+ *                                       docblock). Default
+ *                                       `$base/css/shared/js/admin.js`
+ *                                       (css_library/js/admin.js — safe to
+ *                                       load on a non-admin page: it no-ops
+ *                                       for markup it doesn't find, e.g. tabs
+ *                                       or the reset-password modal).
  *   appSections          list<array>   Each entry is either
  *                                       `['label' => …, 'href' => …]` (a
  *                                       plain link row) or `['html' => …]`
@@ -228,6 +254,7 @@ final class Profile
         $avatarCropperJsPath = (string) ($cfg['avatarCropperJsPath'] ?? ($base . '/css/shared/js/avatar-cropper.js'));
         $dialogJsPath        = (string) ($cfg['dialogJsPath']        ?? ($base . '/css/shared/js/dialog.js'));
         $apiTokensJsPath     = (string) ($cfg['apiTokensJsPath']     ?? ($base . '/css/shared/js/api-tokens.js'));
+        $adminJsPath         = (string) ($cfg['adminJsPath']         ?? ($base . '/css/shared/js/admin.js'));
 
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
         $nonceAttr = $nonce !== '' ? ' nonce="' . $e($nonce) . '"' : '';
@@ -369,14 +396,22 @@ final class Profile
             echo '</script>';
         }
 
-        // ── Kennwort ändern ───────────────────────────────────────────────
+        // ── Kennwort ändern / Tokens verwalten ───────────────────────────────
         echo '<div class="mt-3 mb-3">';
         echo '<a href="' . $e($passwordHref) . '" class="btn">Kennwort ändern</a>';
+        if ($tokenAction !== null) {
+            $tokenCount = ApiTokens::count($tokens);
+            echo ' <button type="button" class="btn" id="apiTokensToggle" data-modal-open="apiTokensModal">'
+               . 'Tokens verwalten (' . $tokenCount . ')</button>';
+        }
         echo '</div>';
 
-        // ── API-Token (only when tokenAction is set — back-compat) ──────────
+        // ── "Tokens verwalten" dialog (only when tokenAction is set — back-
+        //    compat; see ApiTokens.php's docblock for why the dialog markup
+        //    lives in its own class) ────────────────────────────────────────
         if ($tokenAction !== null) {
             echo '<script type="module" src="' . $e($dialogJsPath) . '"' . $nonceAttr . '></script>';
+            echo '<script src="' . $e($adminJsPath) . '"' . $nonceAttr . '></script>';
             ApiTokens::render([
                 'tokens'    => $tokens,
                 'action'    => (string) $tokenAction,
