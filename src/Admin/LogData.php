@@ -15,7 +15,7 @@ use mysqli;
 final class LogData
 {
     /**
-     * @param array{app?:string,context?:string,user?:string,from?:string,to?:string,q?:string,fail?:bool} $filters
+     * @param array{app?:string,context?:string,user?:string,userId?:int,from?:string,to?:string,q?:string,fail?:bool} $filters
      * @return array{rows: list<array<string,mixed>>, total: int, page: int, per_page: int}
      */
     public static function list(mysqli $con, int $page, int $perPage, array $filters): array
@@ -44,6 +44,15 @@ final class LogData
             $like     = '%' . self::escLike($filters['user']) . '%';
             $params[] = $like;
             $params[] = $like;
+        }
+        // Exact match on the acting user's id — distinct from the 'user' filter
+        // above, which is a LIKE on the username and therefore unsuited for
+        // "only mine" (e.g. 'erik' would also match 'erik2'). Used by
+        // Chrome\Activity to hard-scope a user to their own auth_log rows.
+        if (array_key_exists('userId', $filters) && $filters['userId'] !== null && $filters['userId'] !== '') {
+            $where[]  = 'l.idUser = ?';
+            $types   .= 'i';
+            $params[] = (int) $filters['userId'];
         }
         if (!empty($filters['from'])) {
             $where[]  = 'l.logTime >= ?';
