@@ -191,14 +191,14 @@ check(substr_count($html10, 'id="dd-sub-apps"') === 1, '10: Label-generiertes Pa
 assertContains('data-target="dd-sub-core-apps"', $html10, '10: Drilldown-Trigger für Cross-App-Links zeigt auf das System-Panel');
 assertContains('data-target="dd-sub-apps"', $html10, '10: Drilldown-Trigger für das appMenu-Item "Apps" zeigt auf das Label-Panel');
 
-// ── 11. Slim dropdown: Profil, Thema-Label, Status, Meine Aktionen, Hilfe, Abmelden ──
+// ── 11. Slim dropdown: Profil, Thema-Label, Status, Log, Hilfe, Abmelden ──
 $html11 = renderHeader(['loggedIn' => true]);
 $dd11 = userDropdownSection($html11);
 assertContains('class="dropdown-link-btn">Profil</a>', $dd11, '11: "Profil"-Link im Dropdown');
 assertContains('<span class="dropdown-section-label">Thema</span>', $dd11, '11: "Thema"-Label vor der Theme-Pille');
 assertContains('class="theme-row"', $dd11, '11: Theme-Pille im Dropdown');
 assertContains('class="dropdown-link-btn">Status</a>', $dd11, '11: "Status"-Link im Dropdown');
-assertContains('class="dropdown-link-btn">Meine Aktionen</a>', $dd11, '11: "Meine Aktionen"-Link im Dropdown');
+assertContains('class="dropdown-link-btn">Log</a>', $dd11, '11: "Log"-Link im Dropdown');
 assertContains('class="dropdown-link-btn">Hilfe</a>', $dd11, '11: "Hilfe"-Link im Dropdown');
 assertContains('>Abmelden</button>', $dd11, '11: "Abmelden"-Button im Dropdown');
 
@@ -216,7 +216,7 @@ assertNotContains('Passwort &amp; 2FA', $dd11, '12: kein Legacy-"Passwort & 2FA"
 $html13 = renderHeader(['loggedIn' => true, 'profilHref' => null, 'activityHref' => null]);
 $dd13 = userDropdownSection($html13);
 assertNotContains('class="dropdown-link-btn">Profil</a>', $dd13, '13: kein "Profil"-Link wenn profilHref=null');
-assertNotContains('class="dropdown-link-btn">Meine Aktionen</a>', $dd13, '13: kein "Meine Aktionen"-Link wenn activityHref=null');
+assertNotContains('class="dropdown-link-btn">Log</a>', $dd13, '13: kein "Log"-Link wenn activityHref=null');
 // Status/Hilfe (unrelated options) bleiben unberührt
 assertContains('class="dropdown-link-btn">Status</a>', $dd13, '13: Status-Link bleibt trotz profilHref/activityHref=null');
 

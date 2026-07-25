@@ -7,10 +7,11 @@ use Erikr\Chrome\Admin\LogData;
 use mysqli;
 
 /**
- * "Meine Aktionen" — a user's own auth_log history (Header's activityHref
- * target). Reuses the optics of the admin Rule §15 Log tab (LogTab.php /
- * admin.js) but server-renders (no AJAX, no admin.js dependency) and, unlike
- * the admin tab, carries NO filter controls — the user only ever sees their
+ * "Log" — a user's own auth_log history (Header's activityHref target,
+ * labeled "Log" in the dropdown since 2026-07-25; was "Meine Aktionen").
+ * Reuses the optics of the admin Rule §15 Log tab (LogTab.php / admin.js)
+ * but server-renders (no AJAX, no admin.js dependency) and, unlike the
+ * admin tab, carries NO filter controls — the user only ever sees their
  * own rows.
  *
  * Security: the `userId` scope is FIXED and cannot be widened or replaced by
@@ -49,7 +50,7 @@ final class Activity
 
         echo '<div class="app-card">';
         echo '<div class="app-card-header app-card-header-split">';
-        echo '<span>Meine Aktionen (' . (int) $data['total'] . ' Einträge)</span>';
+        echo '<span>Log (' . (int) $data['total'] . ' Einträge)</span>';
         echo '</div>';
         echo '<div class="app-card-body">';
 

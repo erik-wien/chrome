@@ -29,7 +29,7 @@ namespace Erikr\Chrome;
  *       ],
  *       'statusHref'  => $base . '/status.php',    // null suppresses the "Status" link
  *       'profilHref'  => $base . '/profil.php',    // null suppresses the "Profil" link
- *       'activityHref'=> $base . '/aktivitaet.php',// null suppresses "Meine Aktionen"
+ *       'activityHref'=> $base . '/aktivitaet.php',// null suppresses "Log"
  *       'extraItems'  => [],   // raw HTML snippets rendered after the theme pill
  *       'leftExtra'   => '',   // raw HTML snippet rendered inside .header-left
  *                              // after the brand (e.g. a search box)
@@ -39,9 +39,11 @@ namespace Erikr\Chrome;
  *   ]);
  *
  * User dropdown (slim, top to bottom): Profil, Thema, extraItems, Trenner,
- * Status, Meine Aktionen, Hilfe, Trenner, Abmelden. Profil (profilHref) and
- * Meine Aktionen (activityHref) hand off to Chrome\Profile / Chrome\Activity
- * respectively — the app renders its own page around them.
+ * Status, Log, Hilfe, Trenner, Abmelden. Profil (profilHref) and Log
+ * (activityHref — option/default path name unchanged, only the visible
+ * label is "Log"; Erik correction 2026-07-25, was "Meine Aktionen") hand
+ * off to Chrome\Profile / Chrome\Activity respectively — the app renders
+ * its own page around them.
  *
  * @deprecated The options 'profileHref', 'emailHref', 'securityHref',
  *   'appPrefsHref', 'appPrefsLabel' and 'prefsHref' are still accepted for
@@ -312,7 +314,7 @@ final class Header
 
             // ── Account section ─────────────────────────────────────────────
             // Slim dropdown (Erik-approved mockup, 2026-07-25): Profil → Thema
-            // → extraItems → Trenner → Status → Meine Aktionen → Hilfe →
+            // → extraItems → Trenner → Status → Log → Hilfe →
             // Trenner → Abmelden. The old grouped ("Benutzereinstellungen"/
             // Sicherheit/Anwendung) and legacy flat ("Konto"/Einstellungen/
             // Passwort & 2FA) account sections moved to the dedicated profile
@@ -330,7 +332,7 @@ final class Header
                 echo '<a href="' . $e((string) $statusHref) . '" class="dropdown-link-btn">Status</a>';
             }
             if ($activityHref !== null) {
-                echo '<a href="' . $e((string) $activityHref) . '" class="dropdown-link-btn">Meine Aktionen</a>';
+                echo '<a href="' . $e((string) $activityHref) . '" class="dropdown-link-btn">Log</a>';
             }
             if ($helpHref !== null) {
                 echo '<a href="' . $e((string) $helpHref) . '" class="dropdown-link-btn">Hilfe</a>';

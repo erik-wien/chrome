@@ -10,6 +10,14 @@ namespace Erikr\Chrome;
  * Header's user dropdown (see Header::render()'s deprecated options).
  *
  * Renders CONTENT only — no page shell (`<!DOCTYPE>`/`<head>`/Header/Footer).
+ * render() emits its OWN `<div class="pref-section profile-page">` wrapper
+ * (520px cap per Rule §16) — the caller must NOT wrap the render() call in
+ * another `.pref-section` div. Doing so nests two 520px-cap containers
+ * (harmless visually, but a Cap-auf-Cap anti-pattern §16 explicitly avoids).
+ * Put render() directly inside `<main>` (or an app's own header/back-link
+ * wrapper, e.g. an admin-page shell) alongside any heading/alerts the app
+ * wants to show above it — those don't need a `.pref-section` of their own
+ * either; render()'s wrapper already covers the whole block.
  * The app wires its own `profil.php` (typically the `profilHref` target
  * configured on Header::render()) around it:
  *
