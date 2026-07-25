@@ -149,8 +149,20 @@ final class Dispatch
             self::out(['ok' => false, 'error' => 'cannot_delete_self'], 400);
             return;
         }
-        $ok = \admin_delete_user($con, $id, $selfId);
-        self::out(['ok' => (bool) $ok]);
+        $res = \admin_delete_user($con, $id, $selfId);
+        if ($res['ok']) {
+            self::out(['ok' => true]);
+            return;
+        }
+        // Named cause, never a bare "Fehler" (Fehler-Regel §21).
+        $msg = match ($res['error']) {
+            'last_admin'     => 'Der letzte Administrator kann nicht geloescht werden.',
+            'not_found'      => 'Benutzer nicht gefunden.',
+            'cleanup_failed' => 'Aufraeumen der App-Daten fehlgeschlagen — der Benutzer wurde NICHT geloescht. Details im Log.',
+            'delete_failed'  => 'Loeschen fehlgeschlagen. Details im Log.',
+            default          => 'Loeschen nicht moeglich.',
+        };
+        self::out(['ok' => false, 'error' => $res['error'], 'message' => $msg], 400);
     }
 
     /** @param array<string,mixed> $ctx */
