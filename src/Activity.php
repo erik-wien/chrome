@@ -24,6 +24,15 @@ use mysqli;
  * element it emits, before the log table — apps must NOT set a second
  * heading of their own above render().
  *
+ * Card header vs. `<h1>`: when the `<h1>` is rendered (title !== null), the
+ * card header below it carries ONLY the count ("1 Eintrag" / "N Einträge")
+ * — it must NOT repeat the word "Log", or the page shows the same word
+ * twice back to back (Fund 2026-07-25). When `title` is `null` (the app
+ * supplies its own page heading and Activity renders no `<h1>` at all), the
+ * word "Log" would otherwise vanish from the page entirely — so the card
+ * header falls back to its original "Log (N Einträge)" form in that case,
+ * keeping the label visible exactly once.
+ *
  * Usage:
  *   \Erikr\Chrome\Activity::render([
  *       'con'    => $con,
@@ -61,9 +70,19 @@ final class Activity
             echo '<h1>' . $e((string) $title) . '</h1>';
         }
 
+        $total      = (int) $data['total'];
+        $countLabel = $total === 1 ? '1 Eintrag' : $total . ' Einträge';
+
         echo '<div class="app-card">';
         echo '<div class="app-card-header app-card-header-split">';
-        echo '<span>Log (' . (int) $data['total'] . ' Einträge)</span>';
+        // See docblock above: with an <h1> already saying "Log", the card
+        // header must not repeat the word — only when title === null (no
+        // <h1> at all) does it keep the word so "Log" doesn't disappear.
+        if ($title !== null) {
+            echo '<span>' . $e($countLabel) . '</span>';
+        } else {
+            echo '<span>Log (' . $e($countLabel) . ')</span>';
+        }
         echo '</div>';
         echo '<div class="app-card-body">';
 

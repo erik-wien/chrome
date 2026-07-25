@@ -256,6 +256,28 @@ Activity::render(['con' => $con7b, 'userId' => 7, 'page' => 1, 'title' => null])
 $html7b = (string) ob_get_clean();
 assertNotContains('<h1>', $html7b, '7b: title => null suppresses the heading entirely');
 
+// ── 8. No double "Log": with an <h1>, the card header must not repeat the
+//       word — only the count. Without an <h1> (title => null), the card
+//       header keeps the word so "Log" doesn't vanish from the page ────────
+$rows8 = [
+    ['id' => 1, 'logTime' => '2026-07-20 10:00:00', 'origin' => 'zeit', 'context' => 'login',
+     'activity' => 'Login erfolgreich', 'ip' => '1.2.3.4', 'username' => 'erika'],
+];
+$con8 = new FakeMysqli($rows8, 1);
+ob_start();
+Activity::render(['con' => $con8, 'userId' => 7, 'page' => 1]);
+$html8 = (string) ob_get_clean();
+assertContains('<h1>Log</h1>', $html8, '8: with title !== null, the <h1> says "Log"');
+assertNotContains('<span>Log', $html8, '8: …and the card header does not repeat "Log" — only the count');
+assertContains('<span>1 Eintrag</span>', $html8, '8: singular count label "1 Eintrag" (no "Log") in the card header');
+
+$con8b = new FakeMysqli([], 0);
+ob_start();
+Activity::render(['con' => $con8b, 'userId' => 7, 'page' => 1, 'title' => null]);
+$html8b = (string) ob_get_clean();
+assertNotContains('<h1>', $html8b, '8b: title => null suppresses the <h1> entirely');
+assertContains('<span>Log (0 Einträge)</span>', $html8b, '8b: …so the card header keeps the original "Log (N Einträge)" form — the label is not lost entirely');
+
 // ── Summary ────────────────────────────────────────────────────────────
 echo "\n";
 if ($failures !== []) {
