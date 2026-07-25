@@ -233,8 +233,11 @@ final class Profile
         $nonceAttr = $nonce !== '' ? ' nonce="' . $e($nonce) . '"' : '';
 
         echo '<style' . $nonceAttr . '>';
-        echo '.profile-app-section-item{padding:.5rem 1rem;background:var(--color-surface);'
-           . 'border:1px solid var(--color-border);color:var(--color-text)}';
+        // appSections stapeln sich als volle-Breite-Schaltflächen. Das Aussehen
+        // liefert .btn (components.css); hier nur Breite/Ausrichtung, damit die
+        // Zeilen untereinander stehen (Erik: nicht als Pillen nebeneinander).
+        echo '.profile-app-sections{display:flex;flex-direction:column;gap:.5rem}';
+        echo '.profile-app-section-item{width:100%;justify-content:flex-start;text-align:left}';
         echo '.profile-divider{border:0;border-top:1px solid var(--color-border);margin:1rem 0}';
         // Component-specific sizing with no direct utility-class equivalent
         // (border-radius:50% + object-fit combo) — everything else below uses
@@ -394,9 +397,12 @@ final class Profile
                 if (isset($section['html'])) {
                     echo '<div class="profile-app-section-item">' . (string) $section['html'] . '</div>';
                 } else {
+                    // Kanonische Schaltfläche statt Link-im-Kasten: ein nackter
+                    // <a> im gefüllten Container sah aus wie ein deaktiviertes
+                    // Eingabefeld (Erik, 2026-07-25). Volle Breite, gestapelt.
                     $label = (string) ($section['label'] ?? '');
                     $href  = (string) ($section['href']  ?? '#');
-                    echo '<div class="profile-app-section-item"><a href="' . $e($href) . '">' . $e($label) . '</a></div>';
+                    echo '<a class="btn profile-app-section-item" href="' . $e($href) . '">' . $e($label) . '</a>';
                 }
             }
             echo '</div>';

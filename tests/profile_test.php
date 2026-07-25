@@ -67,9 +67,10 @@ $html1 = renderProfile([
 ]);
 $sectionsPos = strpos($html1, '<div class="profile-app-sections">');
 check($sectionsPos !== false, '1: profile-app-sections container present');
-$rowCount = substr_count($html1, '<div class="profile-app-section-item">');
+$rowCount = substr_count($html1, '<a class="btn profile-app-section-item"')
+         + substr_count($html1, '<div class="profile-app-section-item">');
 check($rowCount === 3, '1: three .profile-app-section-item rows, one per appSection (' . $rowCount . ' found)');
-assertContains('<div class="profile-app-section-item"><a href="notifications.php">Benachrichtigungen</a></div>', $html1, '1: label/href section renders as a full-width link row');
+assertContains('<a class="btn profile-app-section-item" href="notifications.php">Benachrichtigungen</a>', $html1, '1: label/href section renders as a canonical full-width .btn');
 assertContains('<div class="profile-app-section-item"><form method="post" action="x.php"><button>Do</button></form></div>', $html1, '1: html section renders raw markup unescaped inside its own row');
 // Regression guard: no flex/pill container class anywhere in the output
 assertNotContains('pill', $html1, '1: no "pill" class anywhere (appSections are rows, not pills)');
@@ -166,9 +167,9 @@ $styleStart8 = strpos($html8, '<style');
 $styleEnd8 = strpos($html8, '</style>') + strlen('</style>');
 $styleBlock8 = substr($html8, $styleStart8, $styleEnd8 - $styleStart8);
 check(!str_contains($styleBlock8, '#'), '8: no "#" (hex color fallback) anywhere in the <style> block');
-assertContains('var(--color-surface)', $styleBlock8, '8: uses the --color-surface token');
 assertContains('var(--color-border)', $styleBlock8, '8: uses the --color-border token');
-assertContains('var(--color-text)', $styleBlock8, '8: uses the --color-text token');
+check(!preg_match('/(background|color)\s*:\s*(?!var\()/i', $styleBlock8),
+    '8: jede Farbangabe im <style>-Block nutzt ein var(--…)-Token');
 
 // ── 9. API-Token block: only with tokenAction, list + escaping + buttons ──
 $html9 = renderProfile([]);
@@ -200,7 +201,7 @@ $html9c = renderProfile([
 ]);
 $kennwortPos = strpos($html9c, 'Kennwort ändern');
 $tokenHeadingPos = strpos($html9c, '<h2>API-Token</h2>');
-$appSectionsPos = strpos($html9c, 'profile-app-sections');
+$appSectionsPos = strpos($html9c, '<div class="profile-app-sections">');
 check($kennwortPos !== false && $tokenHeadingPos !== false && $appSectionsPos !== false
     && $kennwortPos < $tokenHeadingPos && $tokenHeadingPos < $appSectionsPos,
     '9c: API-Token section sits after Kennwort-ändern and before appSections');
