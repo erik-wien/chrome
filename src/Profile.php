@@ -159,6 +159,29 @@ namespace Erikr\Chrome;
  *                                       load on a non-admin page: it no-ops
  *                                       for markup it doesn't find, e.g. tabs
  *                                       or the reset-password modal).
+ *   deactivateAction     string|null   POST target for "Konto deaktivieren"
+ *                                       (see contract 5 below). Not set
+ *                                       (default) → neither button nor dialog
+ *                                       is rendered, no behavior change
+ *                                       (back-compat).
+ *   isAdmin              bool          Whether the shown account is an admin.
+ *                                       Admins get NO "Konto deaktivieren"
+ *                                       button — they would lock themselves
+ *                                       out and the suite could end up without
+ *                                       administration. Defaults to false; the
+ *                                       server-side handler refuses admins too
+ *                                       (auth_deactivate_own_account()), so
+ *                                       this is courtesy, not the guard.
+ *   deactivateJsPath     string        Only used when `deactivateAction` is
+ *                                       set. Default
+ *                                       `$base/css/shared/js/account-deactivate.js`
+ *                                       (css_library/js/account-deactivate.js),
+ *                                       loaded as a module. The app does NOT
+ *                                       need to include it itself — and must
+ *                                       not include it as a plain
+ *                                       `<script defer>`: it is an ES module
+ *                                       (imports the shared apiCall() wrapper,
+ *                                       Rule §21).
  *   appSections          list<array>   Each entry is either
  *                                       `['label' => …, 'href' => …]` (a
  *                                       plain link row) or `['html' => …]`
@@ -219,6 +242,23 @@ namespace Erikr\Chrome;
  *    requirement, response shapes) documented on Erikr\Chrome\ApiTokens —
  *    see that class's docblock. Same `tokenAction` target handles both.
  *
+ * 5) Konto deaktivieren — fetch-based, only when `deactivateAction` is set
+ *    and `isAdmin` is false. POSTs `application/x-www-form-urlencoded` to
+ *    `deactivateAction`:
+ *      csrf_token = csrf_token()
+ *      action     = "deactivate_account"
+ *      password   = current password, for confirmation
+ *    The handler MUST respond with JSON in every case — a redirect reads as an
+ *    opaque "HTTP 200" to fetch() (App-Suite-Policy §2a):
+ *      success   → `{"ok": true}`, then destroy the session
+ *      CSRF fail → HTTP 403 + `{"ok": false, "error": "csrf", "message": "…"}`
+ *      failure   → HTTP 400 + `{"ok": false, "error": "<code>", "message": "…"}`
+ *    Typical handler body: verify csrf_verify(), then
+ *      $res = auth_deactivate_own_account($con, $uid, (string) ($_POST['password'] ?? ''));
+ *    and map `$res['error']` (wrong_password, admin_cannot_deactivate,
+ *    already_disabled, …) to a readable `message` (Fehler-Regel §21). On
+ *    success the JS sends the browser to `login.php?disabled=1`.
+ *
  * Uses the existing AvatarCropModal (src/AvatarCropModal.php) and, when
  * `tokenAction` is set, Erikr\Chrome\ApiTokens (src/ApiTokens.php) — no new
  * crop UI, token markup lives in its own class (see ApiTokens.php's
@@ -247,6 +287,8 @@ final class Profile
         $tokens              = (array)  ($cfg['tokens'] ?? []);
         $tokenAction         = array_key_exists('tokenAction', $cfg) ? $cfg['tokenAction'] : null;
         $appSections         = (array)  ($cfg['appSections'] ?? []);
+        $deactivateAction    = (string) ($cfg['deactivateAction'] ?? '');
+        $isAdmin             = (bool)   ($cfg['isAdmin'] ?? false);
 
         $base                = rtrim((string) ($cfg['base'] ?? ''), '/');
         $cropperCssPath      = (string) ($cfg['cropperCssPath']      ?? ($base . '/css/shared/js/vendor/cropperjs/cropper.min.css'));
@@ -255,6 +297,13 @@ final class Profile
         $dialogJsPath        = (string) ($cfg['dialogJsPath']        ?? ($base . '/css/shared/js/dialog.js'));
         $apiTokensJsPath     = (string) ($cfg['apiTokensJsPath']     ?? ($base . '/css/shared/js/api-tokens.js'));
         $adminJsPath         = (string) ($cfg['adminJsPath']         ?? ($base . '/css/shared/js/admin.js'));
+        $deactivateJsPath    = (string) ($cfg['deactivateJsPath']    ?? ($base . '/css/shared/js/account-deactivate.js'));
+
+        // "Konto deaktivieren" is rendered only when the app opted in AND the
+        // account is not an admin. The server-side handler refuses admins as
+        // well (auth_deactivate_own_account()) — hiding the button is the
+        // courtesy, not the guard.
+        $showDeactivate      = $deactivateAction !== '' && !$isAdmin;
 
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
         $nonceAttr = $nonce !== '' ? ' nonce="' . $e($nonce) . '"' : '';
@@ -441,6 +490,69 @@ final class Profile
                 }
             }
             echo '</div>';
+        }
+
+        // ── Konto deaktivieren (nur Nicht-Admins, nur mit deactivateAction) ─
+        if ($showDeactivate) {
+            echo '<hr class="profile-divider">';
+            echo '<div class="mt-3">';
+            // .btn-outline-danger, NOT the neutral tier Rule §7.1 assigns to
+            // Aktivieren/Deaktivieren — decided exception (2026-07-25): the
+            // action locks the user out of every app and only an administrator
+            // can take it back. Do not "correct" this to a bare .btn.
+            echo '<button type="button" class="btn btn-outline-danger" id="profileDeactivate" '
+               . 'data-modal-open="deactivate-modal">Konto deaktivieren</button>';
+            echo '</div>';
+
+            // Canonical .app-modal-* dialog, opened/closed by the suite's
+            // shared openModal()/closeModal() (css_library/js/admin.js) —
+            // focus trap, Escape and the pointerdown backdrop close (Rule §8)
+            // already live there; same reuse as the "Tokens verwalten" dialog
+            // above, no second dialog mechanism.
+            echo '<div class="app-modal-backdrop" id="deactivate-modal" aria-hidden="true" role="dialog" '
+               . 'aria-modal="true" aria-labelledby="deactivate-modal-titel" hidden>';
+            echo   '<div class="app-modal-dialog app-modal-sm">';
+            echo     '<div class="app-modal-header"><div class="app-modal-header-row">';
+            echo       '<h2 class="app-modal-title" id="deactivate-modal-titel">Konto deaktivieren</h2>';
+            echo       '<button type="button" class="app-modal-close btn icon-btn" data-modal-close '
+                     . 'aria-label="Schließen"><span aria-hidden="true">&times;</span></button>';
+            echo     '</div></div>';
+
+            echo     '<div class="app-modal-body">';
+            echo       '<p>Dein Konto gilt für <strong>alle</strong> Apps der Suite. Nach der '
+                     . 'Deaktivierung ist in keiner App mehr eine Anmeldung möglich, und nur ein '
+                     . 'Administrator kann das Konto wieder freischalten.</p>';
+            echo       '<div id="deactivate-error" class="app-alert app-alert-danger" role="alert" hidden></div>';
+            // Password confirmation, same shape as the inline e-mail change
+            // form above (Auth-Rules §1: verified server-side with
+            // password_verify(), never compared here).
+            echo       '<form id="deactivate-form" method="post" action="' . $e($deactivateAction) . '">';
+            if ($csrf !== '') {
+                echo     '<input type="hidden" name="csrf_token" value="' . $e($csrf) . '">';
+            }
+            echo         '<input type="hidden" name="action" value="deactivate_account">';
+            echo         '<div class="form-group"><label for="deactivate-password">Kennwort zur Bestätigung</label>';
+            echo         '<input type="password" id="deactivate-password" name="password" '
+                       . 'class="form-control" autocomplete="current-password" required></div>';
+            echo       '</form>';
+            echo     '</div>'; // .app-modal-body
+
+            echo     '<div class="app-modal-footer">';
+            echo       '<button type="button" class="btn" data-modal-close>Abbrechen</button>';
+            echo       '<button type="submit" form="deactivate-form" class="btn btn-danger">'
+                     . 'Konto deaktivieren</button>';
+            echo     '</div>';
+
+            echo   '</div>'; // .app-modal-dialog
+            echo '</div>'; // .app-modal-backdrop#deactivate-modal
+
+            // admin.js is a classic script: loading it twice would execute it
+            // twice and double-wire every modal handler. The token block above
+            // already loads it, so only load it here when that block is off.
+            if ($tokenAction === null) {
+                echo '<script src="' . $e($adminJsPath) . '"' . $nonceAttr . '></script>';
+            }
+            echo '<script type="module" src="' . $e($deactivateJsPath) . '"' . $nonceAttr . '></script>';
         }
 
         echo '</div>'; // .profile-page

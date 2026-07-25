@@ -297,6 +297,87 @@ assertNotContains('btn-sm', $avatarRow, '10: avatar row buttons are not .btn-sm 
 // file input — cursor comes from .btn itself, no inline cursor override needed).
 assertContains('<label class="btn" for="profileAvatarFile">', $html10, '10: file-picker trigger is a canonical .btn label, no inline cursor style');
 
+// ── 11. "Konto deaktivieren": only with deactivateAction AND non-admin ────
+$html11 = renderProfile([]);
+assertNotContains('Konto deaktivieren', $html11, '11: nothing rendered without deactivateAction (back-compat)');
+assertNotContains('id="deactivate-modal"', $html11, '11: no dialog without deactivateAction');
+
+$html11admin = renderProfile(['deactivateAction' => 'profil.php', 'isAdmin' => true]);
+assertNotContains('Konto deaktivieren', $html11admin, '11: not rendered for admins (they would lock themselves out)');
+assertNotContains('id="deactivate-modal"', $html11admin, '11: no dialog for admins');
+
+$html11b = renderProfile(['deactivateAction' => 'profil.php', 'isAdmin' => false]);
+assertContains('Konto deaktivieren', $html11b, '11b: button label present (wording is binding)');
+assertContains('id="profileDeactivate"', $html11b, '11b: trigger button present');
+assertContains('id="deactivate-modal"', $html11b, '11b: dialog present in the markup');
+
+// isAdmin defaults to false — deactivateAction alone is enough.
+$html11c = renderProfile(['deactivateAction' => 'profil.php']);
+assertContains('id="deactivate-modal"', $html11c, '11c: isAdmin defaults to false');
+
+// Trigger button tier: .btn-outline-danger (decided §7.1 exception, 2026-07-25).
+$deacBtnPos = strpos($html11b, 'id="profileDeactivate"');
+$deacBtnTag = '';
+if ($deacBtnPos !== false) {
+    $deacTagStart = strrpos(substr($html11b, 0, $deacBtnPos), '<button');
+    $deacTagEnd = strpos($html11b, '>', $deacBtnPos);
+    $deacBtnTag = substr($html11b, $deacTagStart, $deacTagEnd - $deacTagStart);
+}
+assertContains('btn-outline-danger', $deacBtnTag, '11b: trigger uses .btn-outline-danger (decided §7.1 exception — self-lockout, only an admin can undo it)');
+assertNotContains('btn-danger"', $deacBtnTag, '11b: trigger is not the solid commit tier');
+assertContains('data-modal-open="deactivate-modal"', $deacBtnTag, '11b: trigger opens the dialog via the shared openModal wiring (admin.js), no second dialog mechanism');
+
+// Dialog: canonical .app-modal-* pattern, starts hidden, full a11y set (§5).
+assertContains('<div class="app-modal-backdrop" id="deactivate-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="deactivate-modal-titel" hidden>', $html11b, '11b: canonical backdrop, hidden initially, role/aria-modal/aria-labelledby');
+assertContains('<h2 class="app-modal-title" id="deactivate-modal-titel">Konto deaktivieren</h2>', $html11b, '11b: dialog title "Konto deaktivieren"');
+
+// Consequences are spelled out: suite-wide, only an admin can undo it.
+assertContains('alle', $html11b, '11b: dialog names the suite-wide scope');
+assertContains('Administrator', $html11b, '11b: dialog says only an administrator can re-enable the account');
+
+// POST contract: action, password confirmation, CSRF.
+assertContains('id="deactivate-form"', $html11b, '11b: form present');
+assertContains('name="action" value="deactivate_account"', $html11b, '11b: posts action=deactivate_account');
+assertContains('name="password"', $html11b, '11b: password confirmation field (same pattern as the e-mail change)');
+assertContains('id="deactivate-password"', $html11b, '11b: password field carries the id the label points at');
+assertContains('autocomplete="current-password"', $html11b, '11b: password field uses autocomplete=current-password');
+assertContains('name="csrf_token" value="csrf-token-xyz"', $html11b, '11b: CSRF token embedded in the form');
+assertContains('id="deactivate-error"', $html11b, '11b: error slot present for the JS (never a bare "Fehler" — Rule §21)');
+assertContains('id="deactivate-error" class="app-alert app-alert-danger" role="alert" hidden', $html11b, '11b: error slot is a hidden role=alert danger alert');
+
+// Footer tiers: cancel neutral, confirm solid .btn-danger.
+$footerPos = strpos($html11b, '<div class="app-modal-footer">');
+$footer11 = $footerPos === false ? '' : substr($html11b, $footerPos);
+assertContains('<button type="button" class="btn" data-modal-close>Abbrechen</button>', $footer11, '11b: cancel is a bare .btn');
+assertContains('class="btn btn-danger"', $footer11, '11b: confirm is the solid .btn-danger commit tier');
+assertContains('form="deactivate-form"', $footer11, '11b: confirm button submits the dialog form from the footer');
+
+// Behaviour script is loaded by the renderer (module, like api-tokens.js).
+assertContains('type="module" src="/css/shared/js/account-deactivate.js"', $html11b, '11b: account-deactivate.js loaded as a module');
+// openModal/closeModal come from admin.js — loaded here when the token dialog
+// (which already loads it) is not active, never twice.
+assertContains('src="/css/shared/js/admin.js"', $html11b, '11b: admin.js loaded for openModal/closeModal when no token dialog is present');
+$html11d = renderProfile(['deactivateAction' => 'profil.php', 'tokenAction' => 'profil.php']);
+check(substr_count($html11d, '/css/shared/js/admin.js') === 1, '11d: admin.js loaded exactly once when both dialogs are present (' . substr_count($html11d, '/css/shared/js/admin.js') . ' found)');
+
+// Position: last block, after appSections, behind a divider.
+$html11e = renderProfile([
+    'deactivateAction' => 'profil.php',
+    'appSections'      => [['label' => 'Extra', 'href' => 'extra.php']],
+]);
+$appSecPos11 = strpos($html11e, '<div class="profile-app-sections">');
+$deacPos11 = strpos($html11e, 'id="profileDeactivate"');
+check($appSecPos11 !== false && $deacPos11 !== false && $appSecPos11 < $deacPos11, '11e: deactivate block comes after appSections (bottom of the page)');
+$dividerBefore = $deacPos11 === false
+    ? false
+    : strrpos(substr($html11e, 0, $deacPos11), '<hr class="profile-divider">');
+check($dividerBefore !== false, '11e: deactivate block sits behind a divider');
+
+// No inline styles, no emoji, escaping.
+assertNotContains('style="', $html11b, '11b: no inline style attribute in the deactivate block');
+$html11f = renderProfile(['deactivateAction' => 'profil.php?a=1&b=2']);
+assertContains('action="profil.php?a=1&amp;b=2"', $html11f, '11f: deactivateAction is escaped');
+
 // ── Summary ────────────────────────────────────────────────────────────
 echo "\n";
 if ($failures !== []) {
