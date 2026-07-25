@@ -10,6 +10,7 @@ declare(strict_types=1);
  */
 
 require __DIR__ . '/../src/AvatarCropModal.php';
+require __DIR__ . '/../src/ApiTokens.php';
 require __DIR__ . '/../src/Profile.php';
 
 use Erikr\Chrome\Profile;
@@ -168,6 +169,78 @@ check(!str_contains($styleBlock8, '#'), '8: no "#" (hex color fallback) anywhere
 assertContains('var(--color-surface)', $styleBlock8, '8: uses the --color-surface token');
 assertContains('var(--color-border)', $styleBlock8, '8: uses the --color-border token');
 assertContains('var(--color-text)', $styleBlock8, '8: uses the --color-text token');
+
+// ── 9. API-Token block: only with tokenAction, list + escaping + buttons ──
+$html9 = renderProfile([]);
+assertNotContains('id="apiTokensBlock"', $html9, '9: no API-Token block when tokenAction is not set');
+assertNotContains('API-Token', $html9, '9: no "API-Token" heading when tokenAction is not set');
+
+$tokenFixture = [
+    [
+        'id' => 7, 'label' => 'Mein <Handy>', 'source' => 'web',
+        'created_at' => '2026-07-01 10:00:00', 'last_used_at' => '2026-07-20 08:30:00',
+        'expires_at' => null,
+    ],
+    [
+        'id' => 8, 'label' => '', 'source' => 'credentials',
+        'created_at' => '2026-07-10 09:00:00', 'last_used_at' => null,
+        'expires_at' => null,
+    ],
+];
+$html9b = renderProfile(['tokenAction' => 'profil.php', 'tokens' => $tokenFixture]);
+assertContains('id="apiTokensBlock"', $html9b, '9b: API-Token block present when tokenAction is set');
+assertContains('<h2>API-Token</h2>', $html9b, '9b: "API-Token" heading present');
+assertContains('data-action="profil.php"', $html9b, '9b: block carries the tokenAction POST target');
+
+// Section order: heading comes after "Kennwort ändern", before appSections.
+$html9c = renderProfile([
+    'tokenAction' => 'profil.php',
+    'tokens'      => $tokenFixture,
+    'appSections' => [['label' => 'Extra', 'href' => 'extra.php']],
+]);
+$kennwortPos = strpos($html9c, 'Kennwort ändern');
+$tokenHeadingPos = strpos($html9c, '<h2>API-Token</h2>');
+$appSectionsPos = strpos($html9c, 'profile-app-sections');
+check($kennwortPos !== false && $tokenHeadingPos !== false && $appSectionsPos !== false
+    && $kennwortPos < $tokenHeadingPos && $tokenHeadingPos < $appSectionsPos,
+    '9c: API-Token section sits after Kennwort-ändern and before appSections');
+
+// List renders both entries, escaped, one Widerrufen button each.
+assertContains('data-token-id="7"', $html9b, '9b: token id 7 rendered');
+assertContains('data-token-id="8"', $html9b, '9b: token id 8 rendered');
+assertNotContains('Mein <Handy>', $html9b, '9b: label is escaped, no raw markup');
+assertContains('Mein &lt;Handy&gt;', $html9b, '9b: label escaped form present');
+assertContains('(ohne Bezeichnung)', $html9b, '9b: empty label falls back to placeholder text');
+check(substr_count($html9b, 'data-token-revoke') === 2, '9b: one Widerrufen button per token (' . substr_count($html9b, 'data-token-revoke') . ' found)');
+
+// Widerrufen button uses .btn-outline-danger (Rule §7.1, removing/non-primary).
+$revokeBtnPos = strpos($html9b, 'data-token-revoke');
+$revokeTagStart = strrpos(substr($html9b, 0, $revokeBtnPos), '<button');
+$revokeTagEnd = strpos($html9b, '>', $revokeBtnPos);
+$revokeBtnTag = substr($html9b, $revokeTagStart, $revokeTagEnd - $revokeTagStart);
+assertContains('btn-outline-danger', $revokeBtnTag, '9b: Widerrufen button uses .btn-outline-danger');
+assertNotContains('btn-danger"', $revokeBtnTag, '9b: Widerrufen button is not the primary/commit .btn-danger tier');
+
+// "Token anlegen" submit button also uses .btn-outline-danger (data-changing).
+$createBtnPos = strpos($html9b, 'Token anlegen');
+$createTagStart = strrpos(substr($html9b, 0, $createBtnPos), '<button');
+$createTagEnd = strpos($html9b, '>', $createTagStart);
+$createBtnTag = substr($html9b, $createTagStart, $createTagEnd - $createTagStart);
+assertContains('btn-outline-danger', $createBtnTag, '9b: "Token anlegen" button uses .btn-outline-danger');
+
+// Empty-state text shown when tokens list is empty (but tokenAction is set).
+$html9d = renderProfile(['tokenAction' => 'profil.php', 'tokens' => []]);
+assertContains('Noch keine API-Token erstellt.', $html9d, '9d: empty-state text shown with no tokens');
+assertContains('id="apiTokensList" class="list-unstyled d-flex flex-column gap-2" hidden', $html9d, '9d: token list is hidden when empty');
+
+// No cleartext token ever appears in server-rendered markup — Profile/ApiTokens
+// never receive one; the reveal field starts empty and hidden.
+assertContains('id="apiTokenReveal" class="app-alert app-alert-info" hidden', $html9b, '9b: reveal panel starts hidden');
+assertContains('id="apiTokenRevealField" class="form-control" readonly', $html9b, '9b: reveal field starts empty (no value attribute)');
+
+// dialog.js is loaded (module) when the token block is active, for confirmDialog.
+assertContains('type="module" src="' . '/css/shared/js/dialog.js' . '"', $html9b, '9b: dialog.js loaded as a module when tokenAction is set');
+assertContains('type="module" src="' . '/css/shared/js/api-tokens.js' . '"', $html9b, '9b: api-tokens.js loaded as a module');
 
 // ── Summary ────────────────────────────────────────────────────────────
 echo "\n";

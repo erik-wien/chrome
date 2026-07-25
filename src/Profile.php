@@ -39,6 +39,8 @@ namespace Erikr\Chrome;
  *       'csrfToken'          => csrf_token(),
  *       'cspNonce'           => $_cspNonce,
  *       'emailError'         => $emailError ?? null,
+ *       'tokens'             => auth_api_tokens_list($con, $uid),
+ *       'tokenAction'        => 'profil.php',
  *       'appSections'        => [
  *           ['label' => 'Benachrichtigungen', 'href' => 'notifications.php'],
  *           ['html'  => '<form method="post" action="profil.php">…</form>'],
@@ -49,7 +51,9 @@ namespace Erikr\Chrome;
  * ändern" button (+ optional "Profilbild entfernen" button, see
  * `avatarClearAction`), "Benutzername" (display-only, no edit — deferred per
  * Erik), "E-Mail" (value + pencil edit button), "Kennwort ändern" button,
- * divider, appSections listed one per row (never as side-by-side pills).
+ * optional "API-Token" section (see `tokens`/`tokenAction` — Erikr\Chrome\
+ * ApiTokens, rendered only when `tokenAction` is set), divider, appSections
+ * listed one per row (never as side-by-side pills).
  *
  * ── $cfg contract ─────────────────────────────────────────────────────────
  *
@@ -115,6 +119,20 @@ namespace Erikr\Chrome;
  *                                       twice on a page that already includes
  *                                       it elsewhere is harmless: the browser
  *                                       dedupes module scripts by URL.
+ *   tokens               list<array>   Output of `auth_api_tokens_list()`.
+ *                                       Only rendered when `tokenAction` is
+ *                                       also set (see below); defaults to
+ *                                       `[]` (empty-state text shown).
+ *   tokenAction          string|null   POST target for the "API-Token"
+ *                                       section — Erikr\Chrome\ApiTokens
+ *                                       (token_create/token_revoke, see its
+ *                                       own docblock for the exact contract).
+ *                                       Not set (default) → the whole section
+ *                                       is omitted, no behavior change
+ *                                       (back-compat).
+ *   apiTokensJsPath       string        Only used when `tokenAction` is set.
+ *                                       Default
+ *                                       `$base/css/shared/js/api-tokens.js`.
  *   appSections          list<array>   Each entry is either
  *                                       `['label' => …, 'href' => …]` (a
  *                                       plain link row) or `['html' => …]`
@@ -170,10 +188,18 @@ namespace Erikr\Chrome;
  *      header('Content-Type: application/json');
  *      echo json_encode(['ok' => true]); exit;
  *
- * Uses the existing AvatarCropModal (src/AvatarCropModal.php) — no new crop
- * UI. No emojis (Rule §11) — the edit affordance is `.ui-icon-edit`. All
- * dynamic values are htmlspecialchars()-escaped except `appSections[]['html']`,
- * which is trusted raw markup like Header's `extraItems`.
+ * 4) API tokens — fetch-based, only when `tokenAction` is set. Full contract
+ *    (both `action=token_create` and `action=token_revoke`, CSRF-on-JSON
+ *    requirement, response shapes) documented on Erikr\Chrome\ApiTokens —
+ *    see that class's docblock. Same `tokenAction` target handles both.
+ *
+ * Uses the existing AvatarCropModal (src/AvatarCropModal.php) and, when
+ * `tokenAction` is set, Erikr\Chrome\ApiTokens (src/ApiTokens.php) — no new
+ * crop UI, token markup lives in its own class (see ApiTokens.php's
+ * docblock for why it isn't inlined here). No emojis (Rule §11) — the edit
+ * affordance is `.ui-icon-edit`. All dynamic values are
+ * htmlspecialchars()-escaped except `appSections[]['html']`, which is
+ * trusted raw markup like Header's `extraItems`.
  */
 final class Profile
 {
@@ -192,6 +218,8 @@ final class Profile
         $passwordHref        = (string) ($cfg['passwordHref'] ?? '#');
         $csrf                = (string) ($cfg['csrfToken'] ?? '');
         $nonce               = (string) ($cfg['cspNonce']  ?? '');
+        $tokens              = (array)  ($cfg['tokens'] ?? []);
+        $tokenAction         = array_key_exists('tokenAction', $cfg) ? $cfg['tokenAction'] : null;
         $appSections         = (array)  ($cfg['appSections'] ?? []);
 
         $base                = rtrim((string) ($cfg['base'] ?? ''), '/');
@@ -199,6 +227,7 @@ final class Profile
         $cropperJsPath       = (string) ($cfg['cropperJsPath']       ?? ($base . '/css/shared/js/vendor/cropperjs/cropper.min.js'));
         $avatarCropperJsPath = (string) ($cfg['avatarCropperJsPath'] ?? ($base . '/css/shared/js/avatar-cropper.js'));
         $dialogJsPath        = (string) ($cfg['dialogJsPath']        ?? ($base . '/css/shared/js/dialog.js'));
+        $apiTokensJsPath     = (string) ($cfg['apiTokensJsPath']     ?? ($base . '/css/shared/js/api-tokens.js'));
 
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
         $nonceAttr = $nonce !== '' ? ' nonce="' . $e($nonce) . '"' : '';
@@ -331,6 +360,18 @@ final class Profile
         echo '<div style="margin:1rem 0">';
         echo '<a href="' . $e($passwordHref) . '" class="btn">Kennwort ändern</a>';
         echo '</div>';
+
+        // ── API-Token (only when tokenAction is set — back-compat) ──────────
+        if ($tokenAction !== null) {
+            echo '<script type="module" src="' . $e($dialogJsPath) . '"' . $nonceAttr . '></script>';
+            ApiTokens::render([
+                'tokens'    => $tokens,
+                'action'    => (string) $tokenAction,
+                'csrfToken' => $csrf,
+                'cspNonce'  => $nonce,
+                'jsPath'    => $apiTokensJsPath,
+            ]);
+        }
 
         // ── App-spezifische Abschnitte ────────────────────────────────────
         if (!empty($appSections)) {
