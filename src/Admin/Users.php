@@ -123,14 +123,24 @@ final class Users
     }
 
     /**
-     * Toggle disabled flag. Returns new value (0|1) on success.
+     * Toggle the disabled flag. Returns true when the row changed.
+     *
+     * The value MUST be bound as a string. disabled is enum('0','1'), and
+     * MariaDB reads a bare number as the member INDEX, not the value:
+     *   disabled = 1  → first member  → '0'  (enabled!)
+     *   disabled = 0  → the error member → "Data truncated" under strict mode
+     * Binding 'ii' therefore meant "deactivate" silently left the account
+     * enabled and "activate" threw. Verified empirically 2026-07-25.
+     *
+     * Same treatment as admin_edit_user() in auth/src/admin.php:160, which
+     * always bound the string form and was correct all along.
      */
     public static function setDisabled(mysqli $con, int $userId, bool $disabled): bool
     {
         $table = (defined('AUTH_DB_PREFIX') ? AUTH_DB_PREFIX : '') . 'auth_accounts';
-        $d     = $disabled ? 1 : 0;
+        $d     = $disabled ? '1' : '0';
         $stmt  = $con->prepare("UPDATE {$table} SET disabled = ? WHERE id = ?");
-        $stmt->bind_param('ii', $d, $userId);
+        $stmt->bind_param('si', $d, $userId);
         $stmt->execute();
         $ok = $stmt->affected_rows > 0;
         $stmt->close();
