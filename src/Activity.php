@@ -20,21 +20,30 @@ use mysqli;
  * itself never reads either superglobal for the user id, only (optionally)
  * `$_GET['page']` for pagination, which does not affect the row scope.
  *
+ * Renders its own `<h1>` (default "Log", see `title` below) as the first
+ * element it emits, before the log table — apps must NOT set a second
+ * heading of their own above render().
+ *
  * Usage:
  *   \Erikr\Chrome\Activity::render([
  *       'con'    => $con,
  *       'userId' => (int) $_SESSION['id'],
  *   ]);
+ *
+ *   title    string|null  Optional. `<h1>` text, defaults to "Log". Pass
+ *                          `null` to suppress the heading (only for apps
+ *                          whose own page shell already renders one).
  */
 final class Activity
 {
-    /** @param array{con: mysqli, userId: int, perPage?: int, page?: int, pageHref?: string} $cfg */
+    /** @param array{con: mysqli, userId: int, perPage?: int, page?: int, pageHref?: string, title?: string|null} $cfg */
     public static function render(array $cfg): void
     {
         $con      = $cfg['con'];
         $userId   = (int) ($cfg['userId'] ?? 0);
         $perPage  = max(1, (int) ($cfg['perPage'] ?? 20));
         $pageHrefTpl = (string) ($cfg['pageHref'] ?? '?page=%d');
+        $title    = array_key_exists('title', $cfg) ? $cfg['title'] : 'Log';
 
         // page is display-only pagination input; never widen the userId scope
         // with it. Falls back to $_GET['page'] (server-rendered, no AJAX) when
@@ -47,6 +56,10 @@ final class Activity
         $data = LogData::list($con, $page, $perPage, ['userId' => $userId]);
 
         $e = static fn($v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+
+        if ($title !== null) {
+            echo '<h1>' . $e((string) $title) . '</h1>';
+        }
 
         echo '<div class="app-card">';
         echo '<div class="app-card-header app-card-header-split">';

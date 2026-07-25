@@ -15,9 +15,14 @@ namespace Erikr\Chrome;
  * another `.pref-section` div. Doing so nests two 520px-cap containers
  * (harmless visually, but a Cap-auf-Cap anti-pattern §16 explicitly avoids).
  * Put render() directly inside `<main>` (or an app's own header/back-link
- * wrapper, e.g. an admin-page shell) alongside any heading/alerts the app
- * wants to show above it — those don't need a `.pref-section` of their own
- * either; render()'s wrapper already covers the whole block.
+ * wrapper, e.g. an admin-page shell) alongside any alerts the app wants to
+ * show above it — those don't need a `.pref-section` of their own either;
+ * render()'s wrapper already covers the whole block.
+ *
+ * The page renders its own `<h1>` (see `title` below, defaults to "Profil")
+ * as the first element inside the `.pref-section` wrapper — apps must NOT
+ * set a second heading of their own above render().
+ *
  * The app wires its own `profil.php` (typically the `profilHref` target
  * configured on Header::render()) around it:
  *
@@ -40,13 +45,21 @@ namespace Erikr\Chrome;
  *       ],
  *   ]);
  *
- * Layout (top to bottom): 128px round avatar + "Profilbild ändern" button,
- * "Benutzername" (display-only, no edit — deferred per Erik), "E-Mail" (value
- * + pencil edit button), "Kennwort ändern" button, divider, appSections
- * listed one per row (never as side-by-side pills).
+ * Layout (top to bottom): `<h1>` heading, 128px round avatar + "Profilbild
+ * ändern" button (+ optional "Profilbild entfernen" button, see
+ * `avatarClearAction`), "Benutzername" (display-only, no edit — deferred per
+ * Erik), "E-Mail" (value + pencil edit button), "Kennwort ändern" button,
+ * divider, appSections listed one per row (never as side-by-side pills).
  *
  * ── $cfg contract ─────────────────────────────────────────────────────────
  *
+ *   title                string|null   `<h1>` text, first element inside the
+ *                                       `.pref-section` wrapper. Defaults to
+ *                                       "Profil". Pass `null` to suppress the
+ *                                       heading entirely (only for apps whose
+ *                                       own page shell already renders one —
+ *                                       apps should NOT do this by default;
+ *                                       see class docblock above).
  *   avatarSrc           string        URL of the current avatar image.
  *   username             string        Display only — no edit control (Erik:
  *                                       deferred; do not add a pencil here).
@@ -68,6 +81,15 @@ namespace Erikr\Chrome;
  *   avatarChangeAction   string        POST target for the avatar upload
  *                                       (see contract below). Required for
  *                                       the crop-and-upload flow to work.
+ *   avatarClearAction    string|null   POST target for "Profilbild
+ *                                       entfernen" (see contract below).
+ *                                       When set, a second, dezent
+ *                                       `.btn-outline-danger` button is
+ *                                       rendered next to "Profilbild
+ *                                       ändern" (Rule §7.1 — removing/
+ *                                       data-changing, non-primary action).
+ *                                       Not set → no such button, no
+ *                                       behavior change (back-compat).
  *   passwordHref         string        "Kennwort ändern" button target
  *                                       (plain navigation, e.g. password.php
  *                                       — no POST contract here).
@@ -83,6 +105,16 @@ namespace Erikr\Chrome;
  *   cropperCssPath        string        Default `$base/css/shared/js/vendor/cropperjs/cropper.min.css`.
  *   cropperJsPath         string        Default `$base/css/shared/js/vendor/cropperjs/cropper.min.js`.
  *   avatarCropperJsPath   string        Default `$base/css/shared/js/avatar-cropper.js`.
+ *   dialogJsPath          string        Only loaded when `avatarClearAction`
+ *                                       is set (for the confirm dialog on
+ *                                       removal). Default
+ *                                       `$base/css/shared/js/dialog.js`
+ *                                       (css_library's `confirmDialog()`/
+ *                                       `alertDialog()` module — see
+ *                                       css_library/js/dialog.js). Loading it
+ *                                       twice on a page that already includes
+ *                                       it elsewhere is harmless: the browser
+ *                                       dedupes module scripts by URL.
  *   appSections          list<array>   Each entry is either
  *                                       `['label' => …, 'href' => …]` (a
  *                                       plain link row) or `['html' => …]`
@@ -123,6 +155,21 @@ namespace Erikr\Chrome;
  *    redirects with a flash alert on success, or re-renders the profile page
  *    passing the failure back via the `emailError` cfg key.
  *
+ * 3) Avatar removal — fetch-based, same JSON contract as (1), only rendered
+ *    when `avatarClearAction` is set. Triggered client-side after the user
+ *    confirms via `confirmDialog()` (css_library/js/dialog.js, loaded by
+ *    this method — see `dialogJsPath`); no native `confirm()`. POSTs
+ *    multipart/form-data to `avatarClearAction`:
+ *      csrf_token  = csrf_token()
+ *      action      = "clear_avatar"
+ *    The handler MUST respond with `Content-Type: application/json`:
+ *      success → `{"ok": true}`
+ *      failure → HTTP 400 + `{"ok": false, "error": "<message>"}`
+ *    Typical handler body:
+ *      \Erikr\Chrome\AvatarUpload::clear($con, $uid);
+ *      header('Content-Type: application/json');
+ *      echo json_encode(['ok' => true]); exit;
+ *
  * Uses the existing AvatarCropModal (src/AvatarCropModal.php) — no new crop
  * UI. No emojis (Rule §11) — the edit affordance is `.ui-icon-edit`. All
  * dynamic values are htmlspecialchars()-escaped except `appSections[]['html']`,
@@ -133,6 +180,7 @@ final class Profile
     /** @param array<string,mixed> $cfg */
     public static function render(array $cfg): void
     {
+        $title               = array_key_exists('title', $cfg) ? $cfg['title'] : 'Profil';
         $avatarSrc          = (string) ($cfg['avatarSrc'] ?? '');
         $username            = (string) ($cfg['username']  ?? '');
         $email               = (string) ($cfg['email']     ?? '');
@@ -140,6 +188,7 @@ final class Profile
         $emailEditHref       = array_key_exists('emailEditHref', $cfg) ? $cfg['emailEditHref'] : null;
         $emailError          = $cfg['emailError'] ?? null;
         $avatarChangeAction  = (string) ($cfg['avatarChangeAction'] ?? '');
+        $avatarClearAction   = array_key_exists('avatarClearAction', $cfg) ? $cfg['avatarClearAction'] : null;
         $passwordHref        = (string) ($cfg['passwordHref'] ?? '#');
         $csrf                = (string) ($cfg['csrfToken'] ?? '');
         $nonce               = (string) ($cfg['cspNonce']  ?? '');
@@ -149,17 +198,22 @@ final class Profile
         $cropperCssPath      = (string) ($cfg['cropperCssPath']      ?? ($base . '/css/shared/js/vendor/cropperjs/cropper.min.css'));
         $cropperJsPath       = (string) ($cfg['cropperJsPath']       ?? ($base . '/css/shared/js/vendor/cropperjs/cropper.min.js'));
         $avatarCropperJsPath = (string) ($cfg['avatarCropperJsPath'] ?? ($base . '/css/shared/js/avatar-cropper.js'));
+        $dialogJsPath        = (string) ($cfg['dialogJsPath']        ?? ($base . '/css/shared/js/dialog.js'));
 
         $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
         $nonceAttr = $nonce !== '' ? ' nonce="' . $e($nonce) . '"' : '';
 
         echo '<style' . $nonceAttr . '>';
-        echo '.profile-app-section-item{padding:.5rem 1rem;background:var(--color-surface,#fff);'
-           . 'border:1px solid var(--color-border,#ddd);color:var(--color-text,#212529)}';
-        echo '.profile-divider{border:0;border-top:1px solid var(--color-border,#ddd);margin:1rem 0}';
+        echo '.profile-app-section-item{padding:.5rem 1rem;background:var(--color-surface);'
+           . 'border:1px solid var(--color-border);color:var(--color-text)}';
+        echo '.profile-divider{border:0;border-top:1px solid var(--color-border);margin:1rem 0}';
         echo '</style>';
 
         echo '<div class="pref-section profile-page">';
+
+        if ($title !== null) {
+            echo '<h1>' . $e((string) $title) . '</h1>';
+        }
 
         // ── Avatar ────────────────────────────────────────────────────────
         echo '<div class="profile-avatar-block" style="text-align:center;margin-bottom:1.5rem">';
@@ -168,6 +222,9 @@ final class Profile
         echo '<input type="file" id="profileAvatarFile" class="visually-hidden" '
            . 'accept="image/jpeg,image/png,image/gif,image/webp">';
         echo '<label class="btn" for="profileAvatarFile">Profilbild ändern</label>';
+        if ($avatarClearAction !== null) {
+            echo ' <button type="button" class="btn btn-outline-danger" id="profileAvatarClear">Profilbild entfernen</button>';
+        }
         echo '</div>';
 
         echo '<link rel="stylesheet" href="' . $e($cropperCssPath) . '">';
@@ -185,6 +242,41 @@ final class Profile
         echo 'csrfToken:' . json_encode($csrf);
         echo '});})();';
         echo '</script>';
+
+        if ($avatarClearAction !== null) {
+            echo '<script type="module" src="' . $e($dialogJsPath) . '"' . $nonceAttr . '></script>';
+            echo '<script' . $nonceAttr . '>';
+            echo '(function(){';
+            echo 'var btn=document.getElementById("profileAvatarClear");';
+            echo 'if(!btn)return;';
+            echo 'var clearAction=' . json_encode($avatarClearAction) . ';';
+            echo 'var csrfToken=' . json_encode($csrf) . ';';
+            echo 'function doClear(){';
+            echo 'btn.disabled=true;';
+            echo 'var fd=new FormData();';
+            echo 'fd.append("csrf_token",csrfToken);';
+            echo 'fd.append("action","clear_avatar");';
+            echo 'fetch(clearAction,{method:"POST",body:fd,credentials:"same-origin",headers:{"X-Requested-With":"XMLHttpRequest"}})';
+            echo '.then(function(res){return res.json().catch(function(){throw new Error("HTTP "+res.status);}).then(function(data){';
+            echo 'if(!res.ok||!data.ok){throw new Error(data.error||("HTTP "+res.status));}return data;});})';
+            echo '.then(function(){window.location.reload();})';
+            echo '.catch(function(err){';
+            echo 'var msg="Entfernen fehlgeschlagen: "+err.message;';
+            echo 'if(window.alertDialog){window.alertDialog(msg);}else{alert(msg);}';
+            echo 'btn.disabled=false;';
+            echo '});';
+            echo '}';
+            echo 'btn.addEventListener("click",function(){';
+            echo 'if(window.confirmDialog){';
+            echo 'window.confirmDialog("Profilbild wirklich entfernen?",{gefahr:"secondary",okLabel:"Entfernen"}).then(function(ok){if(ok)doClear();});';
+            echo '}else{';
+            echo 'var msg="Bestätigungsdialog konnte nicht geladen werden. Bitte Seite neu laden.";';
+            echo 'if(window.alertDialog){window.alertDialog(msg);}else{alert(msg);}';
+            echo '}';
+            echo '});';
+            echo '})();';
+            echo '</script>';
+        }
 
         // ── Benutzername / E-Mail ────────────────────────────────────────
         echo '<dl class="app-kv">';

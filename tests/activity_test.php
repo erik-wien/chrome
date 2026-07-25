@@ -240,6 +240,22 @@ $html6 = (string) ob_get_clean();
 unset($_GET['page']);
 assertContains('<a class="page-link active" href="?page=2">2</a>', $html6, "6: explicit cfg['page']=2 wins over \$_GET['page']=4");
 
+// ── 7. Page heading: default "Log", null suppresses it ───────────────────
+$con7 = new FakeMysqli([], 0);
+ob_start();
+Activity::render(['con' => $con7, 'userId' => 7, 'page' => 1]);
+$html7 = (string) ob_get_clean();
+assertContains('<h1>Log</h1>', $html7, '7: default title "Log" renders as <h1>');
+$h1Pos7 = strpos($html7, '<h1>Log</h1>');
+$cardPos7 = strpos($html7, '<div class="app-card">');
+check($h1Pos7 !== false && $cardPos7 !== false && $h1Pos7 < $cardPos7, '7: <h1> precedes the log table/card');
+
+$con7b = new FakeMysqli([], 0);
+ob_start();
+Activity::render(['con' => $con7b, 'userId' => 7, 'page' => 1, 'title' => null]);
+$html7b = (string) ob_get_clean();
+assertNotContains('<h1>', $html7b, '7b: title => null suppresses the heading entirely');
+
 // ── Summary ────────────────────────────────────────────────────────────
 echo "\n";
 if ($failures !== []) {

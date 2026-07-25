@@ -124,6 +124,51 @@ assertContains('role="alert"', $html4d, '4d: emailError uses role="alert"');
 $html5 = renderProfile(['cspNonce' => 'n0nce-xyz']);
 check(substr_count($html5, ' nonce="n0nce-xyz"') >= 1, '5: at least one inline <script> carries the CSP nonce');
 
+// ── 6. Page heading: default "Profil", null suppresses it, custom title is
+//       escaped and rendered as the first element inside .pref-section ────
+$html6 = renderProfile([]);
+$prefPos6 = strpos($html6, '<div class="pref-section profile-page">');
+check($prefPos6 !== false, '6: .pref-section wrapper present');
+assertContains('<h1>Profil</h1>', $html6, '6: default title "Profil" renders as <h1>');
+$h1Pos6 = strpos($html6, '<h1>Profil</h1>');
+$avatarPos6 = strpos($html6, 'profile-avatar-block');
+check($h1Pos6 !== false && $prefPos6 < $h1Pos6, '6: <h1> comes after the .pref-section opening tag');
+check($h1Pos6 !== false && $avatarPos6 !== false && $h1Pos6 < $avatarPos6, '6: <h1> precedes the avatar block');
+
+$html6b = renderProfile(['title' => null]);
+assertNotContains('<h1>', $html6b, '6b: title => null suppresses the heading entirely');
+
+$html6c = renderProfile(['title' => '<script>x</script> Mein Profil']);
+assertNotContains('<h1><script>', $html6c, '6c: custom title is escaped, no raw markup');
+assertContains('<h1>&lt;script&gt;x&lt;/script&gt; Mein Profil</h1>', $html6c, '6c: custom title rendered escaped');
+
+// ── 7. avatarClearAction: second button only when set, correct button tier ─
+$html7 = renderProfile([]);
+assertNotContains('profileAvatarClear', $html7, '7: no "Profilbild entfernen" button when avatarClearAction is not set');
+
+$html7b = renderProfile(['avatarClearAction' => 'profil.php']);
+assertContains('id="profileAvatarClear"', $html7b, '7b: "Profilbild entfernen" button rendered when avatarClearAction is set');
+assertContains('Profilbild entfernen', $html7b, '7b: button label present');
+$btnPos7b = strpos($html7b, 'id="profileAvatarClear"');
+$tagStart7b = strrpos(substr($html7b, 0, $btnPos7b), '<button');
+$tagEnd7b = strpos($html7b, '>', $btnPos7b);
+$btnTag7b = substr($html7b, $tagStart7b, $tagEnd7b - $tagStart7b);
+assertContains('btn-outline-danger', $btnTag7b, '7b: button uses .btn-outline-danger (Rule §7.1, data-changing/removing, non-primary)');
+assertNotContains('btn-danger"', $btnTag7b, '7b: button is NOT the primary/commit .btn-danger tier');
+assertContains('clear_avatar', $html7b, '7b: JS posts action=clear_avatar');
+assertContains('confirmDialog', $html7b, '7b: uses the shared confirmDialog (no native confirm())');
+assertNotContains('confirm(', $html7b, '7b: no native window.confirm() call anywhere (only confirmDialog(...))');
+
+// ── 8. No hex color fallbacks in the nonce\'d <style> block (Rule §1/§9) ────
+$html8 = renderProfile(['cspNonce' => 'style-check']);
+$styleStart8 = strpos($html8, '<style');
+$styleEnd8 = strpos($html8, '</style>') + strlen('</style>');
+$styleBlock8 = substr($html8, $styleStart8, $styleEnd8 - $styleStart8);
+check(!str_contains($styleBlock8, '#'), '8: no "#" (hex color fallback) anywhere in the <style> block');
+assertContains('var(--color-surface)', $styleBlock8, '8: uses the --color-surface token');
+assertContains('var(--color-border)', $styleBlock8, '8: uses the --color-border token');
+assertContains('var(--color-text)', $styleBlock8, '8: uses the --color-text token');
+
 // ── Summary ────────────────────────────────────────────────────────────
 echo "\n";
 if ($failures !== []) {
