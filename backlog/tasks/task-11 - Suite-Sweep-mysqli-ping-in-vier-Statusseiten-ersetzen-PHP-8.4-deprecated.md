@@ -1,9 +1,10 @@
 ---
 id: TASK-11
 title: 'Suite-Sweep: mysqli::ping() in vier Statusseiten ersetzen (PHP 8.4 deprecated)'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-28 18:17'
+updated_date: '2026-07-28 20:21'
 labels: []
 dependencies: []
 priority: low
@@ -44,7 +45,7 @@ das Muster in die naechste App aus.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Keine der vier Statusseiten ruft noch mysqli::ping(); alle nutzen einen echten Round-Trip
-- [ ] #2 Ein Aufruf jeder betroffenen Statusseite erzeugt keinen Deprecated-Eintrag mehr im Fehlerlog (auf PHP 8.5 geprueft)
-- [ ] #3 Das Beispiel in chrome/CLAUDE.md zeigt nicht laenger $con->ping()
+- [x] #1 Keine der vier Statusseiten ruft noch mysqli::ping(); alle nutzen einen echten Round-Trip
+- [x] #2 Ein Aufruf jeder betroffenen Statusseite erzeugt keinen Deprecated-Eintrag mehr im Fehlerlog (auf PHP 8.5 geprueft)
+- [x] #3 Das Beispiel in chrome/CLAUDE.md zeigt nicht laenger $con->ping()
 <!-- AC:END -->
