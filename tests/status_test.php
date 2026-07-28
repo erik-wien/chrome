@@ -227,6 +227,72 @@ check($dbFalse['state'] === 'fail', '9: dbCheck() false-Return => fail');
 $dbOk = Status::dbCheck(fn() => true, 'verbunden');
 check($dbOk['state'] === 'ok' && $dbOk['detail'] === 'verbunden', '9: dbCheck() true-Return => ok mit okDetail');
 
+// ── smtpCheck / smtpStatusFrom (TASK-10) ───────────────────────────────
+//
+// Der Probe-Teil spricht ein echtes Socket; die Bewertung ist davon getrennt
+// und wird hier ohne Netz geprüft. smtpCheck() bekommt den Prober injiziert.
+
+// Nicht konfiguriert ist GELB, nicht rot — und smtpCheck darf dabei gar nicht
+// erst ein Socket aufmachen.
+$proberCalled = false;
+$spy = function () use (&$proberCalled): array { $proberCalled = true; return ['ok' => true, 'stage' => 'ok']; };
+
+$r = Status::smtpCheck(['host' => '', 'port' => 587], 3, $spy);
+check($r['state'] === 'warn', 'smtpCheck: leerer Host -> warn');
+check($proberCalled === false, 'smtpCheck: leerer Host -> kein Verbindungsversuch');
+
+$r = Status::smtpCheck(['host' => 'smtp.example.com', 'port' => 0], 3, $spy);
+check($r['state'] === 'warn', 'smtpCheck: fehlender Port -> warn');
+
+// Happy path.
+$r = Status::smtpCheck(['host' => 'smtp.example.com', 'port' => 587], 3,
+    fn(): array => ['ok' => true, 'stage' => 'ok', 'detail' => '220 mail ready']);
+check($r['state'] === 'ok', 'smtpCheck: erfolgreicher Dialog -> ok');
+check(isset($r['last_success_ts']), 'smtpCheck: Erfolg setzt last_success_ts');
+assertContains('smtp.example.com:587', $r['detail'], 'smtpCheck: Detail nennt Host und Port');
+
+// Der Prober bekommt die Werte aus der Konfiguration durchgereicht.
+$gesehen = [];
+Status::smtpCheck(['host' => 'mail.test', 'port' => 2525], 7,
+    function (string $h, int $p, int $t) use (&$gesehen): array {
+        $gesehen = [$h, $p, $t];
+        return ['ok' => true, 'stage' => 'ok'];
+    });
+check($gesehen === ['mail.test', 2525, 7], 'smtpCheck: Host/Port/Timeout werden durchgereicht');
+
+// Jede Fehlerstufe wird rot UND benennt die Ursache (§21) — ein reines
+// "SMTP-Fehler" hilft beim Beheben nicht.
+$stufen = [
+    'connect'     => 'nicht erreichbar',
+    'banner'      => '220',
+    'ehlo'        => 'EHLO',
+    'no_starttls' => 'STARTTLS',
+    'starttls'    => 'STARTTLS',
+    'tls'         => 'TLS-Handshake',
+];
+foreach ($stufen as $stage => $erwartet) {
+    $r = Status::smtpStatusFrom(
+        ['ok' => false, 'stage' => $stage, 'detail' => 'Serverantwort XYZ'],
+        'smtp.example.com', 587
+    );
+    check($r['state'] === 'fail', "smtpStatusFrom: Stufe {$stage} -> fail");
+    assertContains($erwartet, $r['detail'], "smtpStatusFrom: Stufe {$stage} benennt die Ursache");
+    assertContains('Serverantwort XYZ', $r['detail'], "smtpStatusFrom: Stufe {$stage} reicht die Serverantwort durch");
+}
+
+// Ein Server ohne STARTTLS ist für den echten Versand unbrauchbar
+// (smtp_send erzwingt ENCRYPTION_STARTTLS) — freundliches EHLO hin oder her.
+$r = Status::smtpStatusFrom(['ok' => false, 'stage' => 'no_starttls', 'detail' => 'STARTTLS nicht angeboten'], 'm.test', 25);
+check($r['state'] === 'fail', 'smtpStatusFrom: kein STARTTLS -> fail, nicht ok');
+
+// Unbekannte Stufe darf nicht still als ok durchrutschen.
+$r = Status::smtpStatusFrom(['ok' => false, 'stage' => 'voellig_neu']);
+check($r['state'] === 'fail', 'smtpStatusFrom: unbekannte Stufe -> fail (kein stilles ok)');
+
+// Ohne Host/Port darf kein " (:0)" im Text landen.
+$r = Status::smtpStatusFrom(['ok' => false, 'stage' => 'connect', 'detail' => 'x']);
+assertNotContains(':0', $r['detail'], 'smtpStatusFrom: ohne Ziel kein Platzhalter-Ziel im Text');
+
 // ── Summary ────────────────────────────────────────────────────────────
 // Cleanup temp dir
 foreach (glob($tmpDir . '/*') ?: [] as $f) { @unlink($f); }

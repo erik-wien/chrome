@@ -286,6 +286,183 @@ final class Status
     }
 
     /**
+     * Erreichbarkeit des SMTP-Servers, über den erikr/auth Einladungen,
+     * Passwort-Resets und E-Mail-Bestätigungen verschickt.
+     *
+     * WARUM ES DIESEN CHECK GIBT: Ein SMTP-Ausfall ist die Sorte Störung, die
+     * sonst niemand bemerkt. Nichts stürzt ab, keine Seite wird rot — es kommt
+     * nur schlicht keine Einladung und kein Passwort-Reset mehr an, und der
+     * Betroffene sitzt ausgesperrt davor. Alle Apps der Suite versenden über
+     * denselben Weg (\Erikr\Auth\Mail\smtp_send()), deshalb liegt der Check
+     * hier in der Library und nicht siebenmal in den Apps.
+     *
+     * ES WIRD KEINE MAIL VERSCHICKT und BEWUSST KEIN AUTH-LOGIN versucht:
+     *   - Ein AUTH-Versuch wäre der einzige Weg, ein falsches Passwort zu
+     *     erkennen. Er kostet aber: sieben Apps × Statusaufrufe erzeugen trotz
+     *     60-s-Cache regelmäßig Anmeldeversuche am selben Postfach eines
+     *     Shared Hosters. Läuft dessen Fail2ban/Rate-Limit an, sperrt der
+     *     Check genau das Konto aus, das er überwachen soll — die Ampel würde
+     *     den Ausfall verursachen statt ihn zu melden.
+     *   - Ein falsches Passwort ist zudem der unwahrscheinlichere Fall: die
+     *     mail.ini wird von mcp/deploy.py erzeugt, nicht von Hand gepflegt.
+     * Geprüft wird stattdessen die gesamte Strecke bis unmittelbar VOR die
+     * Anmeldung: TCP-Connect → 220-Banner → EHLO → STARTTLS inkl.
+     * TLS-Handshake. Das deckt die realistischen Ausfälle ab (Server tot, Port
+     * geblockt, DNS kaputt, Zertifikat abgelaufen, STARTTLS weg) und ist
+     * nebenwirkungsfrei.
+     *
+     * @param ?array   $cfg     ['host'=>string,'port'=>int]; null = aus
+     *                          \Erikr\Auth\Mail\load_mail_config() lesen
+     * @param ?callable $prober fn(string $host, int $port, int $t): array —
+     *                          für Tests injizierbar (kein Netz nötig)
+     */
+    public static function smtpCheck(?array $cfg = null, int $timeoutSec = 3, ?callable $prober = null): array
+    {
+        if ($cfg === null) {
+            try {
+                $cfg = \Erikr\Auth\Mail\load_mail_config();
+            } catch (\Throwable $ex) {
+                // Nicht konfiguriert ist GELB, nicht rot: eine Instanz ohne
+                // mail.ini ist unvollständig eingerichtet, aber nicht gestört.
+                return ['state' => 'warn', 'detail' => 'Keine Mail-Konfiguration: ' . $ex->getMessage()];
+            }
+        }
+
+        $host = trim((string) ($cfg['host'] ?? ''));
+        $port = (int) ($cfg['port'] ?? 0);
+        if ($host === '' || $port <= 0) {
+            return ['state' => 'warn', 'detail' => 'Mail-Konfiguration unvollständig (Host/Port fehlt).'];
+        }
+
+        $prober ??= static fn(string $h, int $p, int $t): array => self::smtpProbe($h, $p, $t);
+
+        return self::smtpStatusFrom($prober($host, $port, $timeoutSec), $host, $port);
+    }
+
+    /**
+     * Führt den eigentlichen SMTP-Dialog. Liefert die Stufe, an der es scheiterte
+     * — die Auswertung macht smtpStatusFrom().
+     *
+     * @return array{ok: bool, stage: string, detail: string}
+     */
+    public static function smtpProbe(string $host, int $port, int $timeoutSec = 3): array
+    {
+        $errno  = 0;
+        $errstr = '';
+        $sock   = @stream_socket_client(
+            sprintf('tcp://%s:%d', $host, $port),
+            $errno,
+            $errstr,
+            $timeoutSec,
+            STREAM_CLIENT_CONNECT
+        );
+        if ($sock === false) {
+            return ['ok' => false, 'stage' => 'connect', 'detail' => $errstr !== '' ? $errstr : ('Fehler #' . $errno)];
+        }
+        stream_set_timeout($sock, $timeoutSec);
+
+        try {
+            $banner = self::smtpRead($sock);
+            if (strncmp($banner, '220', 3) !== 0) {
+                return ['ok' => false, 'stage' => 'banner', 'detail' => $banner];
+            }
+
+            // Manche Server weisen ein nicht-FQDN-EHLO ab; gethostname() ist das
+            // Beste, was ohne Konfiguration zur Verfügung steht.
+            $ehloName = gethostname() ?: 'localhost';
+            $ehlo     = self::smtpSend($sock, 'EHLO ' . $ehloName);
+            if (strncmp($ehlo, '250', 3) !== 0) {
+                return ['ok' => false, 'stage' => 'ehlo', 'detail' => $ehlo];
+            }
+
+            // smtp_send() erzwingt ENCRYPTION_STARTTLS — ein Server ohne
+            // STARTTLS ist für den echten Versand also unbrauchbar, auch wenn
+            // er auf EHLO freundlich antwortet.
+            if (stripos($ehlo, 'STARTTLS') === false) {
+                return ['ok' => false, 'stage' => 'no_starttls', 'detail' => 'STARTTLS nicht angeboten'];
+            }
+
+            $tls = self::smtpSend($sock, 'STARTTLS');
+            if (strncmp($tls, '220', 3) !== 0) {
+                return ['ok' => false, 'stage' => 'starttls', 'detail' => $tls];
+            }
+            if (@stream_socket_enable_crypto($sock, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) !== true) {
+                $err = error_get_last()['message'] ?? 'unbekannter Fehler';
+                return ['ok' => false, 'stage' => 'tls', 'detail' => $err];
+            }
+
+            return ['ok' => true, 'stage' => 'ok', 'detail' => trim($banner)];
+        } finally {
+            @fwrite($sock, "QUIT\r\n");
+            @fclose($sock);
+        }
+    }
+
+    /**
+     * Bewertet ein smtpProbe()-Ergebnis. Rein, ohne Seiteneffekte — dadurch
+     * ohne Netz testbar.
+     *
+     * Alle Meldungen nennen die konkrete Stufe und die Serverantwort (§21) —
+     * "SMTP-Fehler" allein hilft beim Beheben nicht. Host und Port stehen mit
+     * drin; `detail` rendert Status::render() ohnehin nur für Admins.
+     */
+    public static function smtpStatusFrom(array $probe, string $host = '', int $port = 0): array
+    {
+        $ziel = $host !== '' ? sprintf(' (%s:%d)', $host, $port) : '';
+
+        if (!empty($probe['ok'])) {
+            return [
+                'state'           => 'ok',
+                'detail'          => 'Verbindung, EHLO und STARTTLS ok' . $ziel . '.',
+                'last_success_ts' => time(),
+            ];
+        }
+
+        $antwort = trim((string) ($probe['detail'] ?? ''));
+        $texte   = [
+            'connect'     => 'Mailserver nicht erreichbar' . $ziel,
+            'banner'      => 'Mailserver meldet sich nicht mit 220' . $ziel,
+            'ehlo'        => 'EHLO abgelehnt' . $ziel,
+            'no_starttls' => 'Server bietet kein STARTTLS an' . $ziel . ', der Versand verlangt es aber',
+            'starttls'    => 'STARTTLS abgelehnt' . $ziel,
+            'tls'         => 'TLS-Handshake fehlgeschlagen' . $ziel,
+        ];
+        $stage = (string) ($probe['stage'] ?? '');
+        $text  = $texte[$stage] ?? ('SMTP-Prüfung fehlgeschlagen' . $ziel . ' (Stufe ' . $stage . ')');
+
+        return ['state' => 'fail', 'detail' => $text . ($antwort !== '' ? ': ' . $antwort : '.')];
+    }
+
+    /** Sendet eine SMTP-Zeile und liest die Antwort. */
+    private static function smtpSend($sock, string $line): string
+    {
+        @fwrite($sock, $line . "\r\n");
+        return self::smtpRead($sock);
+    }
+
+    /**
+     * Liest eine (ggf. mehrzeilige) SMTP-Antwort. Mehrzeilig heißt: "250-…"
+     * pro Fortsetzungszeile, "250 …" (Leerzeichen an vierter Stelle) beendet
+     * sie. Ohne diese Unterscheidung bliebe die EHLO-Antwort halb im Puffer
+     * liegen und die nächste Leseoperation bekäme fremde Zeilen.
+     */
+    private static function smtpRead($sock): string
+    {
+        $out = '';
+        while (($line = fgets($sock, 1024)) !== false) {
+            $out .= $line;
+            if (strlen($line) < 4 || $line[3] !== '-') {
+                break;
+            }
+        }
+        $meta = stream_get_meta_data($sock);
+        if (!empty($meta['timed_out'])) {
+            return trim($out) . ' [Zeitüberschreitung beim Lesen]';
+        }
+        return trim($out);
+    }
+
+    /**
      * Thin try/catch wrapper around an app-supplied DB ping callable. The
      * callable should throw on failure (or return `false`); anything else
      * (incl. void/true) counts as ok.
