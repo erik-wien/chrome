@@ -87,11 +87,15 @@ final class Status
         $cacheFile = $opts['cacheFile'] ?? null;
         $cacheTtl  = (int) ($opts['cacheTtl'] ?? 60);
 
+        $vorherige = [];
         if (is_string($cacheFile) && $cacheFile !== '') {
             $cached = self::readCache($cacheFile, $cacheTtl);
             if ($cached !== null) {
                 return $cached;
             }
+            // Abgelaufener Cache ist als Ergebnis wertlos, als GEDÄCHTNIS aber
+            // nicht: er trägt die last_success_ts-Werte des letzten Laufs.
+            $vorherige = self::lastSuccessMap(self::readCacheRaw($cacheFile));
         }
 
         $out = [];
@@ -116,13 +120,33 @@ final class Status
                 $state = 'fail';
             }
 
+            // "Zeitstempel des letzten Erfolgs" (Suite-Policy §5) ist genau dann
+            // interessant, wenn die Ampel GERADE ROT ist — dann will man wissen,
+            // seit wann. Ein Check, der ihn nur bei Erfolg liefert, schweigt
+            // ausgerechnet im Fehlerfall. Deshalb drei Stufen:
+            //   1. Der Check liefert selbst einen Wert (z. B. Datenalter aus der
+            //      DB) — der gewinnt immer, er weiß es besser.
+            //   2. Sonst bei state=ok: jetzt.
+            //   3. Sonst (warn/fail): den Wert des letzten Laufs weiterreichen,
+            //      damit "zuletzt ok: …" über die Störung hinweg stehen bleibt.
+            // Ohne (3) verlöre die Seite die Information im selben Moment, in
+            // dem sie gebraucht wird. Das Gedächtnis hängt am Cache-File; wird
+            // es gelöscht, beginnt die Historie neu — akzeptabel, denn die
+            // Alternative wäre eine eigene Persistenzschicht für eine reine
+            // Anzeigeinformation.
+            if (isset($r['last_success_ts']) && $r['last_success_ts'] !== null) {
+                $lastSuccess = (int) $r['last_success_ts'];
+            } elseif ($state === 'ok') {
+                $lastSuccess = time();
+            } else {
+                $lastSuccess = $vorherige[$name] ?? null;
+            }
+
             $out[] = [
                 'name'            => $name,
                 'state'           => $state,
                 'detail'          => isset($r['detail']) ? (string) $r['detail'] : null,
-                'last_success_ts' => isset($r['last_success_ts']) && $r['last_success_ts'] !== null
-                    ? (int) $r['last_success_ts']
-                    : null,
+                'last_success_ts' => $lastSuccess,
                 'duration_ms'     => $durationMs,
                 'adminOnly'       => $adminOnly,
             ];
@@ -490,6 +514,19 @@ final class Status
      */
     private static function readCache(string $file, int $ttl): ?array
     {
+        $data = self::readCacheRaw($file);
+        if ($data === null) {
+            return null;
+        }
+        if ((time() - (int) $data['generated_ts']) > $ttl) {
+            return null;
+        }
+        return $data;
+    }
+
+    /** Cache-Inhalt ohne TTL-Prüfung — Grundlage des last_success_ts-Gedächtnisses. */
+    private static function readCacheRaw(string $file): ?array
+    {
         if (!is_file($file)) {
             return null;
         }
@@ -501,10 +538,28 @@ final class Status
         if (!is_array($data) || !isset($data['checks'], $data['generated_ts']) || !is_array($data['checks'])) {
             return null;
         }
-        if (!is_int($data['generated_ts']) || (time() - $data['generated_ts']) > $ttl) {
+        if (!is_int($data['generated_ts'])) {
             return null;
         }
         return $data;
+    }
+
+    /**
+     * name => last_success_ts aus einem Cache-Ergebnis. Checks ohne Wert
+     * tauchen nicht auf, damit ein späteres ?? sauber greift.
+     *
+     * @return array<string,int>
+     */
+    private static function lastSuccessMap(?array $cached): array
+    {
+        $map = [];
+        foreach ($cached['checks'] ?? [] as $c) {
+            $ts = $c['last_success_ts'] ?? null;
+            if (is_int($ts) && isset($c['name'])) {
+                $map[(string) $c['name']] = $ts;
+            }
+        }
+        return $map;
     }
 
     /**

@@ -227,6 +227,65 @@ check($dbFalse['state'] === 'fail', '9: dbCheck() false-Return => fail');
 $dbOk = Status::dbCheck(fn() => true, 'verbunden');
 check($dbOk['state'] === 'ok' && $dbOk['detail'] === 'verbunden', '9: dbCheck() true-Return => ok mit okDetail');
 
+// ── last_success_ts überlebt eine Störung (wlmonitor TASK-24) ──────────
+//
+// Der Zeitstempel ist genau dann interessant, wenn die Ampel GERADE rot ist.
+// Vorher lieferte run() ihn nur, wenn der Check ihn selbst mitgab — also
+// ausgerechnet im Fehlerfall meist gar nicht.
+
+$lsFile = $tmpDir . '/last_success.json';
+@unlink($lsFile);
+
+// Lauf 1: alles grün, kein Check gibt selbst einen Zeitstempel mit.
+$r1 = Status::run([
+    ['name' => 'Dienst A', 'check' => fn() => ['state' => 'ok']],
+    ['name' => 'Dienst B', 'check' => fn() => ['state' => 'ok']],
+], ['cacheFile' => $lsFile, 'cacheTtl' => 60]);
+$a1 = $r1['checks'][0];
+check(is_int($a1['last_success_ts']), 'run: state=ok ohne eigenen Zeitstempel -> jetzt');
+$erfolgsZeit = $a1['last_success_ts'];
+
+// Cache künstlich veralten, damit Lauf 2 wirklich rechnet statt zu cachen.
+$alt = json_decode((string) file_get_contents($lsFile), true);
+$alt['generated_ts'] -= 3600;
+file_put_contents($lsFile, json_encode($alt));
+
+// Lauf 2: Dienst A fällt aus. Der Zeitstempel muss stehen bleiben.
+$r2 = Status::run([
+    ['name' => 'Dienst A', 'check' => fn() => ['state' => 'fail', 'detail' => 'kaputt']],
+    ['name' => 'Dienst B', 'check' => fn() => ['state' => 'ok']],
+], ['cacheFile' => $lsFile, 'cacheTtl' => 60]);
+$a2 = $r2['checks'][0];
+check($a2['state'] === 'fail', 'run: Dienst A ist rot');
+// is_int() MUSS mitgeprueft werden: ohne das Gedaechtnis liefern beide Laeufe
+// null, und ein blosser Vergleich waere vakuum-gruen (null === null).
+check(is_int($a2['last_success_ts']) && $a2['last_success_ts'] === $erfolgsZeit,
+    'run: rote Ampel behaelt den Zeitstempel des letzten Erfolgs');
+
+// Ein Check, der selbst einen Wert mitbringt (z. B. Datenalter aus der DB),
+// muss immer gewinnen — auch gegen das Gedaechtnis.
+$alt = json_decode((string) file_get_contents($lsFile), true);
+$alt['generated_ts'] -= 3600;
+file_put_contents($lsFile, json_encode($alt));
+$r3 = Status::run([
+    ['name' => 'Dienst A', 'check' => fn() => ['state' => 'fail', 'last_success_ts' => 1234567890]],
+    ['name' => 'Dienst B', 'check' => fn() => ['state' => 'ok']],
+], ['cacheFile' => $lsFile, 'cacheTtl' => 60]);
+check($r3['checks'][0]['last_success_ts'] === 1234567890,
+    'run: eigener Zeitstempel des Checks schlaegt das Gedaechtnis');
+
+// Ein Dienst, der noch NIE lief, darf keinen Zeitstempel erfinden.
+@unlink($lsFile);
+$r4 = Status::run([
+    ['name' => 'Nie gelaufen', 'check' => fn() => ['state' => 'fail']],
+], ['cacheFile' => $lsFile, 'cacheTtl' => 60]);
+check($r4['checks'][0]['last_success_ts'] === null,
+    'run: ohne je erfolgten Lauf bleibt der Zeitstempel leer');
+
+// Ohne cacheFile gibt es kein Gedaechtnis - aber auch keinen Fehler.
+$r5 = Status::run([['name' => 'X', 'check' => fn() => ['state' => 'fail']]]);
+check($r5['checks'][0]['last_success_ts'] === null, 'run: ohne Cache-Datei kein Gedaechtnis, kein Fehler');
+
 // ── smtpCheck / smtpStatusFrom (TASK-10) ───────────────────────────────
 //
 // Der Probe-Teil spricht ein echtes Socket; die Bewertung ist davon getrennt
