@@ -112,13 +112,25 @@ final class Dispatch
             self::out(['ok' => false, 'error' => 'missing_fields'], 400);
             return;
         }
+        $mail = null;
         try {
-            $id = \admin_create_user($con, $username, $email, $rights, $baseUrl);
+            $id = \admin_create_user($con, $username, $email, $rights, $baseUrl, $mail);
         } catch (\mysqli_sql_exception $e) {
             self::out(['ok' => false, 'error' => 'duplicate_or_invalid'], 409);
             return;
         }
-        self::out(['ok' => true, 'id' => $id]);
+        // ok bleibt true: das Konto EXISTIERT und der Invite-Token ist
+        // ausgestellt, auch wenn die Mail nicht rausging (TASK-7 AC#3). Nur
+        // melden darf man das nicht als blanken Erfolg — sonst wartet der
+        // Admin auf einen Link, der nie ankam.
+        $antwort = ['ok' => true, 'id' => $id];
+        if ($mail !== null && !$mail['sent']) {
+            $antwort['warning'] = 'Benutzer angelegt, aber die Einladung an ' . $email
+                . ' konnte nicht versendet werden: ' . ($mail['error'] ?? 'Ursache unbekannt')
+                . '. Der Zugangslink wurde nicht zugestellt — Mailkonfiguration pruefen, '
+                . 'danach den Passwort-Reset erneut ausloesen.';
+        }
+        self::out($antwort);
     }
 
     /** @param array<string,mixed> $ctx */
@@ -175,7 +187,18 @@ final class Dispatch
             return;
         }
         $result = \admin_reset_password($con, $id, $baseUrl);
-        self::out(['ok' => (bool) $result['ok'], 'unblocked_ips' => $result['unblocked_ips'] ?? []]);
+        $antwort = [
+            'ok'            => (bool) $result['ok'],
+            'unblocked_ips' => $result['unblocked_ips'] ?? [],
+        ];
+        // ok beschreibt den Reset (Token ausgestellt, invalidLogins geleert,
+        // IPs entsperrt), nicht den Mailversand — siehe auth TASK-7.
+        if ($antwort['ok'] && !($result['mail_sent'] ?? true)) {
+            $antwort['warning'] = 'Passwort-Reset ausgefuehrt, aber die E-Mail konnte nicht '
+                . 'versendet werden: ' . ($result['mail_error'] ?? 'Ursache unbekannt')
+                . '. Der Zugangslink wurde nicht zugestellt — Mailkonfiguration pruefen.';
+        }
+        self::out($antwort);
     }
 
     private static function userResetPreview(mysqli $con): void
