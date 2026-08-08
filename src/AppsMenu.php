@@ -36,6 +36,9 @@ final class AppsMenu
         'suche'     => ['label' => 'Suche',      'prod' => 'https://www.jardyx.com'],
         'lastfm'    => ['label' => 'Last.fm',    'prod' => 'https://lastfm.jardyx.com'],
         'biblio'    => ['label' => 'Biblio',     'prod' => 'https://biblio.jardyx.com'],
+        // mailprint lebt nur auf akadbrain/eriks.cloud (kein jardyx.com) — bewusste
+        // Abweichung vom jardyx-Muster: die prod-URL zeigt auf eriks.cloud.
+        'mailprint' => ['label' => 'Mail Print', 'prod' => 'https://mailprint.eriks.cloud'],
     ];
 
     /**
