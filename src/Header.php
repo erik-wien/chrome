@@ -105,7 +105,23 @@ final class Header
         $helpHref      = array_key_exists('helpHref', $a) ? $a['helpHref'] : ($base . '/help.php');
         $logoutHref    = $a['logoutHref']    ?? ($base . '/logout.php');
         $themeEndpoint = $a['themeEndpoint'] ?? ($base . '/preferences.php');
+        // "Anmelden" nimmt die Seite mit, auf der der Nutzer gerade steht:
+        // App-login.php reicht ?return= an den zentralen Login weiter
+        // (auth_login_redirect_if_central(), erikr/auth). Ohne diesen Parameter
+        // landete jeder anonyme Besucher nach dem Login stur auf der
+        // App-Startseite, obwohl die App das eigentliche Ziel kannte.
+        // Nur der PFAD wird uebernommen und dort erneut geprueft
+        // (_auth_safe_return_path()) -- ein Ziel auf einem fremden Host ist
+        // damit ausgeschlossen.
+        // Gilt auch fuer explizit gesetzte Links (wlmonitor/simplechat/last.fm
+        // reichen ihre eigene login.php durch) -- sonst muesste jede App die
+        // Logik doppeln. Uebersprungen wird nur, was schon ein return= traegt
+        // (biblio baut die zentrale URL selbst, dort waere ein zweiter
+        // Parameter falsch) und null (Apps ohne Anmelden-Link).
         $anonLoginHref = array_key_exists('anonLoginHref', $a) ? $a['anonLoginHref'] : ($base . '/login.php');
+        if (is_string($anonLoginHref) && !str_contains($anonLoginHref, 'return=')) {
+            $anonLoginHref = self::loginHrefWithReturn($anonLoginHref);
+        }
         $anonThemeToggle = (bool) ($a['anonThemeToggle'] ?? false);
 
         // Administration dropdown (menu bar) — "Verwaltung" (adminHref) is the
@@ -538,6 +554,29 @@ final class Header
      * Theme-pill markup (.theme-row + three .theme-btn buttons) shared by the
      * logged-in user dropdown and the anon header-right slot (anonThemeToggle).
      */
+    /**
+     * Hängt die aktuelle Seite als ?return=<pfad> an die Login-URL, damit der
+     * Nutzer nach dem Anmelden dorthin zurückkommt statt auf die Startseite.
+     *
+     * Übernommen wird ausschließlich der Pfad der laufenden Anfrage (nie ein
+     * Wert aus Nutzereingabe), und Login-Seiten werden ausgelassen — ein
+     * return auf login.php schickte den frisch Angemeldeten zurück aufs
+     * Formular. Die Auswertung in erikr/auth prüft den Wert erneut.
+     */
+    private static function loginHrefWithReturn(string $loginHref): string
+    {
+        $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+        if ($uri === '' || $uri[0] !== '/' || str_starts_with($uri, '//')) {
+            return $loginHref;
+        }
+        $pfad = parse_url($uri, PHP_URL_PATH);
+        if (!is_string($pfad) || $pfad === '' || str_ends_with($pfad, '/login.php')) {
+            return $loginHref;
+        }
+        $sep = str_contains($loginHref, '?') ? '&' : '?';
+        return $loginHref . $sep . 'return=' . rawurlencode($uri);
+    }
+
     private static function renderThemePill(string $theme): string
     {
         $html = '<div class="theme-row">';
