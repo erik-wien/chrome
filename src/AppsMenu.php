@@ -39,6 +39,12 @@ final class AppsMenu
         // mailprint lebt nur auf akadbrain/eriks.cloud (kein jardyx.com) — bewusste
         // Abweichung vom jardyx-Muster: die prod-URL zeigt auf eriks.cloud.
         'mailprint' => ['label' => 'Mail Print', 'prod' => 'https://mailprint.eriks.cloud'],
+        // display ebenso nur auf eriks.cloud: dort haengt das einzige E1003-Geraet,
+        // und nur dort laeuft der MQTT-Broker. Herausgeloest aus wlmonitor
+        // 2026-09-05 — vorher lag der Board-Code dort und wurde nach jardyx.com
+        // mitdeployt, wo er per BOARD_FEATURE_AVAILABLE wieder versteckt werden
+        // musste. Als eigene App wird er dorthin gar nicht erst ausgerollt.
+        'display'   => ['label' => 'Display',    'prod' => 'https://display.eriks.cloud'],
     ];
 
     /**
